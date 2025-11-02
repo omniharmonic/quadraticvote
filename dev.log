@@ -1,0 +1,591 @@
+
+> quadraticvote@0.1.0 dev /Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote
+> next dev --port 3000
+
+  ▲ Next.js 14.2.3
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm.
+npm warn Unknown env config "only-built-dependencies". This will stop working in the next major version of npm.
+ ✓ Ready in 1828ms
+ ○ Compiling /events/create ...
+(node:23657) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ Compiled /events/create in 2.2s (681 modules)
+ GET /events/create 200 in 2287ms
+ ✓ Compiled in 102ms (347 modules)
+ ✓ Compiled / in 156ms (674 modules)
+ GET / 200 in 223ms
+ ✓ Compiled /api/events in 438ms (238 modules)
+Event creation error: PostgresError: column "tags" of relation "events" does not exist
+    at ErrorResponse (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:809:66)
+    at handle (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:495:6)
+    at Socket.data (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:330:9)
+    at Socket.emit (node:events:507:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '42703',
+  position: '53',
+  file: 'parse_target.c',
+  line: '1080',
+  routine: 'checkInsertTargets'
+}
+ POST /api/events 500 in 539ms
+(node:23657) TimeoutNegativeWarning: -22060.081129815866 is a negative number.
+Timeout duration was set to 1.
+ POST /api/events 201 in 33ms
+ ✓ Compiled /events/[id] in 166ms (821 modules)
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 432ms
+ ✓ Compiled /events/[id]/vote in 214ms (892 modules)
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 489ms
+ ✓ Compiled /api/events/[id]/votes in 64ms (542 modules)
+ POST /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes 200 in 329ms
+ ✓ Compiled /api/events/[id]/results in 73ms (545 modules)
+Results fetch error: TypeError: Cannot read properties of undefined (reading 'referencedTable')
+    at normalizeRelation (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/relations.js:211:56)
+    at PgDialect.buildRelationalQueryWithoutPK (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/dialect.js:976:101)
+    at QueryPromise._getQuery (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:91:25)
+    at QueryPromise._toSQL (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:106:24)
+    at eval (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:69:42)
+    at Object.startActiveSpan (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/tracing.js:14:14)
+    at QueryPromise._prepare (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:68:60)
+    at eval (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:115:19)
+    at Object.startActiveSpan (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/tracing.js:14:14)
+    at QueryPromise.execute (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:114:60)
+    at QueryPromise.then (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/query-promise.js:26:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 500 in 287ms
+ ✓ Compiled /events/[id]/results in 312ms (906 modules)
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 503ms
+ ✓ Compiled /api/events in 63ms (489 modules)
+ POST /api/events 400 in 126ms
+ POST /api/events 201 in 31ms
+ ✓ Compiled /_not-found in 116ms (851 modules)
+ POST /api/events/09b09f05-8661-43ee-b234-5aa6932e2da1/votes 404 in 147ms
+ GET /api/events/09b09f05-8661-43ee-b234-5aa6932e2da1/votes 400 in 22ms
+ POST /api/events/09b09f05-8661-43ee-b234-5aa6932e2da1/votes 404 in 24ms
+ GET /api/events 200 in 33ms
+ GET /api/events 200 in 5ms
+ ✓ Compiled /api/events/[id] in 108ms (471 modules)
+Event fetch error: TypeError: Cannot read properties of undefined (reading 'referencedTable')
+    at normalizeRelation (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/relations.js:211:56)
+    at PgDialect.buildRelationalQueryWithoutPK (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/dialect.js:976:101)
+    at QueryPromise._getQuery (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:91:25)
+    at QueryPromise._toSQL (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:106:24)
+    at eval (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:69:42)
+    at Object.startActiveSpan (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/tracing.js:14:14)
+    at QueryPromise._prepare (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:68:60)
+    at eval (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:115:19)
+    at Object.startActiveSpan (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/tracing.js:14:14)
+    at QueryPromise.execute (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:114:60)
+    at QueryPromise.then (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/query-promise.js:26:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+ GET /api/events/09b09f05-8661-43ee-b234-5aa6932e2da1 500 in 363ms
+ POST /api/events/09b09f05-8661-43ee-b234-5aa6932e2da1/votes 200 in 49ms
+ ✓ Compiled /api/events/[id]/results in 78ms (474 modules)
+Results fetch error: TypeError: Cannot read properties of undefined (reading 'referencedTable')
+    at normalizeRelation (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/relations.js:211:56)
+    at PgDialect.buildRelationalQueryWithoutPK (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/dialect.js:976:101)
+    at QueryPromise._getQuery (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:91:25)
+    at QueryPromise._toSQL (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:106:24)
+    at eval (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:69:42)
+    at Object.startActiveSpan (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/tracing.js:14:14)
+    at QueryPromise._prepare (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:68:60)
+    at eval (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:115:19)
+    at Object.startActiveSpan (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/tracing.js:14:14)
+    at QueryPromise.execute (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:114:60)
+    at QueryPromise.then (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/query-promise.js:26:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+ GET /api/events/09b09f05-8661-43ee-b234-5aa6932e2da1/results 500 in 115ms
+ ✓ Compiled in 100ms (245 modules)
+ ✓ Compiled in 44ms (241 modules)
+ ✓ Compiled in 32ms (226 modules)
+ ✓ Compiled in 39ms (226 modules)
+ ✓ Compiled in 33ms (226 modules)
+ ✓ Compiled in 29ms (226 modules)
+ GET /api/events/09b09f05-8661-43ee-b234-5aa6932e2da1/results 200 in 49ms
+ ✓ Compiled /events/[id]/vote in 228ms (516 modules)
+ GET /events/09b09f05-8661-43ee-b234-5aa6932e2da1/vote?code=demo-code-prop 200 in 307ms
+ ✓ Compiled /_not-found in 456ms (881 modules)
+ GET /_next/static/chunks/app/events/%5Bid%5D/vote/page.js 404 in 505ms
+ GET /sw.js 404 in 10ms
+ ✓ Compiled /events/[id]/results in 91ms (530 modules)
+ GET /events/09b09f05-8661-43ee-b234-5aa6932e2da1/results 200 in 129ms
+ GET /_next/static/chunks/app/events/%5Bid%5D/results/page.js 404 in 13ms
+ GET /sw.js 404 in 14ms
+ ✓ Compiled /api/events in 62ms (546 modules)
+ GET /api/events 200 in 124ms
+ ✓ Compiled /api/events/[id] in 69ms (548 modules)
+Event fetch error: TypeError: Cannot read properties of undefined (reading 'referencedTable')
+    at normalizeRelation (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/relations.js:211:56)
+    at PgDialect.buildRelationalQueryWithoutPK (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/dialect.js:976:101)
+    at QueryPromise._getQuery (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:91:25)
+    at QueryPromise._toSQL (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:106:24)
+    at eval (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:69:42)
+    at Object.startActiveSpan (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/tracing.js:14:14)
+    at QueryPromise._prepare (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:68:60)
+    at eval (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:115:19)
+    at Object.startActiveSpan (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/tracing.js:14:14)
+    at QueryPromise.execute (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/pg-core/query-builders/query.js:114:60)
+    at QueryPromise.then (webpack-internal:///(rsc)/./node_modules/.pnpm/drizzle-orm@0.30.10_@types+react@18.3.26_postgres@3.4.7_react@18.3.1/node_modules/drizzle-orm/query-promise.js:26:17)
+ GET /api/events/invalid-uuid 500 in 94ms
+ GET /sw.js 404 in 23ms
+ ✓ Compiled in 90ms (548 modules)
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 638ms (1054 modules)
+ GET /api/events/invalid-uuid 404 in 705ms
+Event fetch error: PostgresError: invalid input syntax for type uuid: "invalid-uuid"
+    at ErrorResponse (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:809:66)
+    at handle (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:495:6)
+    at Socket.data (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:330:9)
+    at Socket.emit (node:events:507:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '22P02',
+  where: "unnamed portal parameter $1 = '...'",
+  file: 'uuid.c',
+  line: '137',
+  routine: 'string_to_uuid'
+}
+ GET /api/events/invalid-uuid 500 in 37ms
+ GET /api/events/00000000-0000-0000-0000-000000000000 404 in 8ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 8ms
+ ✓ Compiled /api/events/[id]/votes in 63ms (509 modules)
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 110ms
+ ✓ Compiled /api/events/[id]/results in 49ms (512 modules)
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 103ms
+Vote submission error: Error: Invalid invite code
+    at VoteService.validateInviteCode (webpack-internal:///(rsc)/./src/lib/services/vote.service.ts:70:28)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async VoteService.submitVote (webpack-internal:///(rsc)/./src/lib/services/vote.service.ts:21:24)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/events/[id]/votes/route.ts:44:22)
+    at async /Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:53446
+    at async e_.execute (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:44747)
+    at async e_.handle (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:54700)
+    at async doRender (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1377:42)
+    at async cacheEntry.responseCache.get.routeKind (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1587:40)
+    at async DevServer.renderToResponseWithComponentsImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1507:28)
+    at async DevServer.renderPageComponent (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1924:24)
+    at async DevServer.renderToResponseImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1962:32)
+    at async DevServer.pipeImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:920:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/next-server.js:272:17)
+    at async DevServer.handleRequestImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:816:17)
+    at async /Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/dev/next-dev-server.js:339:20
+    at async Span.traceAsyncFn (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/trace/trace.js:154:20)
+    at async DevServer.handleRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/dev/next-dev-server.js:336:24)
+    at async invokeRender (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:174:21)
+    at async handleRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:353:24)
+    at async requestHandlerImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:377:13)
+    at async Server.requestListener (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/start-server.js:141:13)
+ POST /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes 400 in 13ms
+Vote submission error: SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+    at JSON.parse (<anonymous>)
+    at parseJSONFromBytes (node:internal/deps/undici/undici:6251:19)
+    at successSteps (node:internal/deps/undici/undici:6232:27)
+    at readAllBytes (node:internal/deps/undici/undici:5201:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+ POST /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes 500 in 5ms
+ ✓ Compiled /api/events in 49ms (514 modules)
+ GET /api/events 200 in 84ms
+ GET /api/events 200 in 4ms
+ GET /api/events 200 in 5ms
+ GET /api/events 200 in 4ms
+ GET /api/events 200 in 4ms
+ POST /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes 400 in 9ms
+ POST /api/events 201 in 20ms
+ ✓ Compiled / in 156ms (304 modules)
+ GET / 200 in 258ms
+ GET / 200 in 10ms
+ GET / 200 in 11ms
+ GET / 200 in 8ms
+ GET / 200 in 26ms
+ GET / 200 in 29ms
+ GET / 200 in 28ms
+ GET / 200 in 30ms
+ ✓ Compiled /events/create in 186ms (518 modules)
+ ✓ Compiled (588 modules)
+ GET /api/events 200 in 401ms
+ GET /api/events 200 in 3ms
+ GET / 200 in 51ms
+ GET / 200 in 11ms
+ GET /events/create 200 in 28ms
+ GET /events/create 200 in 46ms
+ GET /events/create 200 in 41ms
+ GET /events/create 200 in 73ms
+ GET /events/create 200 in 16ms
+ ✓ Compiled /_not-found in 150ms (1135 modules)
+ GET /sw.js 404 in 192ms
+ GET /_next/static/webpack/b8d4647acc17b94f.webpack.hot-update.json 404 in 86ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /events/create 200 in 22ms
+ GET /sw.js 404 in 11ms
+ GET / 200 in 13ms
+ GET / 200 in 11ms
+ GET /api/events 200 in 51ms
+ GET /api/events 200 in 47ms
+ GET /api/events 200 in 14ms
+ GET /api/events 200 in 13ms
+ GET /api/events 200 in 14ms
+ ✓ Compiled /events/[id]/vote in 93ms (602 modules)
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 160ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 160ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 155ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 159ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 167ms
+ ✓ Compiled /api/events/[id]/votes in 105ms (604 modules)
+ ✓ Compiled (608 modules)
+ GET / 200 in 22ms
+ GET / 200 in 11ms
+ GET /api/events 200 in 136ms
+ GET /api/events 200 in 133ms
+ GET /api/events 200 in 110ms
+ GET /api/events 200 in 102ms
+ GET /api/events 200 in 105ms
+ GET /api/events 200 in 107ms
+ ✓ Compiled /events/[id]/results in 274ms (618 modules)
+ GET /events/09b09f05-8661-43ee-b234-5aa6932e2da1/results 200 in 407ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 403ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 407ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 412ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 410ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 420ms
+ ✓ Compiled /api/events/[id]/results in 212ms (621 modules)
+ GET / 200 in 23ms
+ GET / 200 in 10ms
+ GET /admin 404 in 23ms
+ GET /api/events 200 in 30ms
+ GET /api/events 200 in 34ms
+ GET /admin/users 404 in 35ms
+ GET /admin/proposals 404 in 44ms
+ GET /api/events 200 in 33ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/analytics 404 in 29ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/manage 404 in 34ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/manage 404 in 35ms
+ GET /dashboard 404 in 46ms
+ GET /users 404 in 44ms
+ GET /moderate 404 in 45ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/stats 404 in 42ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/admin 404 in 36ms
+ GET /admin/system 404 in 20ms
+ GET /manage 404 in 18ms
+ GET /admin/access 404 in 39ms
+ GET /admin/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/analytics 404 in 40ms
+ GET /admin/moderate 404 in 39ms
+ GET /admin/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 404 in 46ms
+ GET /health 404 in 22ms
+ GET /admin/dashboard 404 in 18ms
+ GET /permissions 404 in 42ms
+ GET /dashboard/proposals 404 in 42ms
+ GET /dashboard/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 404 in 41ms
+ GET /admin/monitoring 404 in 34ms
+ GET /status 404 in 14ms
+ GET /sw.js 404 in 15ms
+ GET / 200 in 11ms
+ GET / 200 in 9ms
+ GET /api/events 200 in 11ms
+ ✓ Compiled /api/proposals in 223ms (1170 modules)
+ GET /api/proposals 400 in 256ms
+ GET /admin/proposals 404 in 244ms
+ GET /api/events 200 in 259ms
+ GET /api/events 200 in 252ms
+ GET /api/events 200 in 142ms
+ GET /api/events 200 in 273ms
+Proposal submission error: Error: Proposal submission is closed
+    at ProposalService.submitProposal (webpack-internal:///(rsc)/./src/lib/services/proposal.service.ts:23:50)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/proposals/route.ts:44:26)
+    at async /Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:53446
+    at async e_.execute (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:44747)
+    at async e_.handle (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:54700)
+    at async doRender (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1377:42)
+    at async cacheEntry.responseCache.get.routeKind (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1599:28)
+    at async DevServer.renderToResponseWithComponentsImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1507:28)
+    at async DevServer.renderPageComponent (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1924:24)
+    at async DevServer.renderToResponseImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1962:32)
+    at async DevServer.pipeImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:920:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/next-server.js:272:17)
+    at async DevServer.handleRequestImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:816:17)
+    at async /Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/dev/next-dev-server.js:339:20
+    at async Span.traceAsyncFn (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/trace/trace.js:154:20)
+    at async DevServer.handleRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/dev/next-dev-server.js:336:24)
+    at async invokeRender (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:174:21)
+    at async handleRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:353:24)
+    at async requestHandlerImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:377:13)
+    at async Server.requestListener (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/start-server.js:141:13)
+ POST /api/proposals 400 in 28ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 36ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 55ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/propose 404 in 37ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 14ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 23ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 34ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 38ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 26ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 36ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 13ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 18ms
+ ✓ Compiled in 123ms (365 modules)
+ ✓ Compiled / in 77ms (374 modules)
+ GET / 200 in 139ms
+ GET / 200 in 10ms
+ ✓ Compiled /api/events in 46ms (588 modules)
+ GET /api/events 200 in 101ms
+ ✓ Compiled /events/[id]/vote in 44ms (601 modules)
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 88ms
+ ✓ Compiled /api/events/[id]/votes in 59ms (603 modules)
+ ✓ Compiled (607 modules)
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 28ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 9ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 10ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 6ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 7ms
+ ✓ Compiled /_not-found in 161ms (1154 modules)
+ GET /sw.js 404 in 183ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 29ms
+ GET /sw.js 404 in 20ms
+ GET / 200 in 16ms
+ GET / 200 in 10ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 42ms
+ ✓ Compiled /events/[id]/results in 354ms (397 modules)
+ ✓ Compiled /api/events/[id]/votes in 0ms (397 modules)
+ ✓ Compiled in 1ms (615 modules)
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 735ms
+ GET /events/create 200 in 686ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 447ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 452ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 26ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 40ms
+ ✓ Compiled /api/events/[id]/results in 87ms (618 modules)
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 192ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 5ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 26ms
+ GET /events/create 200 in 30ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 145ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 227ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 225ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 221ms
+ GET /events/create 200 in 38ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 36ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 66ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 108ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 107ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 481ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 462ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 489ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 468ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 64ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 4ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 3ms
+ GET / 200 in 16ms
+ GET / 200 in 9ms
+ GET /events/create 200 in 20ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 24ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 27ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 19ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 10ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 25ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 26ms
+ GET /events/create 200 in 29ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 71ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 74ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 56ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 83ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 14ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 11ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 14ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 15ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 19ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 19ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 21ms
+ GET /events/create 200 in 40ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 12ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 13ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes?code=demo-code-123 200 in 12ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 14ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 12ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 4ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 2ms
+ ✓ Compiled in 465ms (948 modules)
+ ✓ Compiled in 69ms (558 modules)
+ ✓ Compiled in 228ms (948 modules)
+ ✓ Compiled in 67ms (558 modules)
+ ✓ Compiled in 150ms (934 modules)
+ ✓ Compiled in 86ms (558 modules)
+ ✓ Compiled in 82ms (558 modules)
+ ✓ Compiled in 63ms (558 modules)
+ ✓ Compiled /_not-found in 129ms (937 modules)
+ GET /sw.js 404 in 175ms
+ GET /sw.js 404 in 10ms
+ ✓ Compiled /api/events/[id]/votes in 478ms (604 modules)
+ POST /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/votes 200 in 599ms
+ ✓ Compiled /api/events/[id]/results in 122ms (607 modules)
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 181ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd/results 200 in 2ms
+ ✓ Compiled /events/[id] in 83ms (613 modules)
+ ✓ Compiled /api/events/[id] in 61ms (617 modules)
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 105ms
+ GET /api/events/fa818a89-1ff0-43ef-a111-80badb38f9dd 200 in 5ms
+ ✓ Compiled /_not-found in 150ms (1164 modules)
+ GET /sw.js 404 in 199ms
+ ✓ Compiled / in 158ms (397 modules)
+ GET / 200 in 224ms
+ GET / 200 in 11ms
+ ✓ Compiled /api/proposals in 473ms (1168 modules)
+ GET /admin/proposals 200 in 579ms
+ GET /api/events 200 in 578ms
+ GET /api/events 200 in 579ms
+ GET /api/events 200 in 580ms
+ GET /api/events 200 in 581ms
+Proposals fetch error: PostgresError: relation "proposals" does not exist
+    at ErrorResponse (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:809:66)
+    at handle (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:495:6)
+    at Socket.data (webpack-internal:///(rsc)/./node_modules/.pnpm/postgres@3.4.7/node_modules/postgres/src/connection.js:330:9)
+    at Socket.emit (node:events:507:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:189:23) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '42P01',
+  position: '382',
+  file: 'parse_relation.c',
+  line: '1384',
+  routine: 'parserOpenTable'
+}
+ GET /api/proposals 500 in 617ms
+Proposal submission error: Error: Proposal submission is closed
+    at ProposalService.submitProposal (webpack-internal:///(rsc)/./src/lib/services/proposal.service.ts:23:50)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async POST (webpack-internal:///(rsc)/./src/app/api/proposals/route.ts:44:26)
+    at async /Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:53446
+    at async e_.execute (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:44747)
+    at async e_.handle (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:54700)
+    at async doRender (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1377:42)
+    at async cacheEntry.responseCache.get.routeKind (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1599:28)
+    at async DevServer.renderToResponseWithComponentsImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1507:28)
+    at async DevServer.renderPageComponent (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1924:24)
+    at async DevServer.renderToResponseImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1962:32)
+    at async DevServer.pipeImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:920:25)
+    at async NextNodeServer.handleCatchallRenderRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/next-server.js:272:17)
+    at async DevServer.handleRequestImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:816:17)
+    at async /Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/dev/next-dev-server.js:339:20
+    at async Span.traceAsyncFn (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/trace/trace.js:154:20)
+    at async DevServer.handleRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/dev/next-dev-server.js:336:24)
+    at async invokeRender (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:174:21)
+    at async handleRequest (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:353:24)
+    at async requestHandlerImpl (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/router-server.js:377:13)
+    at async Server.requestListener (/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/node_modules/.pnpm/next@14.2.3_@playwright+test@1.56.1_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/start-server.js:141:13)
+ POST /api/proposals 400 in 43ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 38ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/vote?code=demo-code-123 200 in 57ms
+ ⨯ ./src/app/events/[id]/propose/page.tsx:10:1
+Module not found: Can't resolve '@/components/ui/alert'
+[0m [90m  8 |[39m [36mimport[39m { [33mTextarea[39m } [36mfrom[39m [32m'@/components/ui/textarea'[39m[33m;[39m[0m
+[0m [90m  9 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m { [33mAlert[39m[33m,[39m [33mAlertDescription[39m } [36mfrom[39m [32m'@/components/ui/alert'[39m[33m;[39m[0m
+[0m [90m    |[39m [31m[1m^[22m[39m[0m
+[0m [90m 11 |[39m [36mimport[39m { [33mCheckCircle[39m[33m,[39m [33mAlertCircle[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m[0m
+[0m [90m 12 |[39m [36mimport[39m type { [33mEvent[39m } [36mfrom[39m [32m'@/lib/types'[39m[33m;[39m[0m
+[0m [90m 13 |[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+ ○ Compiling /_not-found ...
+ ⨯ ./src/app/events/[id]/propose/page.tsx:10:1
+Module not found: Can't resolve '@/components/ui/alert'
+[0m [90m  8 |[39m [36mimport[39m { [33mTextarea[39m } [36mfrom[39m [32m'@/components/ui/textarea'[39m[33m;[39m[0m
+[0m [90m  9 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m { [33mAlert[39m[33m,[39m [33mAlertDescription[39m } [36mfrom[39m [32m'@/components/ui/alert'[39m[33m;[39m[0m
+[0m [90m    |[39m [31m[1m^[22m[39m[0m
+[0m [90m 11 |[39m [36mimport[39m { [33mCheckCircle[39m[33m,[39m [33mAlertCircle[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m[0m
+[0m [90m 12 |[39m [36mimport[39m type { [33mEvent[39m } [36mfrom[39m [32m'@/lib/types'[39m[33m;[39m[0m
+[0m [90m 13 |[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+ GET /api/proposals 500 in 178ms
+ ⨯ ./src/app/events/[id]/propose/page.tsx:10:1
+Module not found: Can't resolve '@/components/ui/alert'
+[0m [90m  8 |[39m [36mimport[39m { [33mTextarea[39m } [36mfrom[39m [32m'@/components/ui/textarea'[39m[33m;[39m[0m
+[0m [90m  9 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m { [33mAlert[39m[33m,[39m [33mAlertDescription[39m } [36mfrom[39m [32m'@/components/ui/alert'[39m[33m;[39m[0m
+[0m [90m    |[39m [31m[1m^[22m[39m[0m
+[0m [90m 11 |[39m [36mimport[39m { [33mCheckCircle[39m[33m,[39m [33mAlertCircle[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m[0m
+[0m [90m 12 |[39m [36mimport[39m type { [33mEvent[39m } [36mfrom[39m [32m'@/lib/types'[39m[33m;[39m[0m
+[0m [90m 13 |[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./src/app/events/[id]/propose/page.tsx:10:1
+Module not found: Can't resolve '@/components/ui/alert'
+[0m [90m  8 |[39m [36mimport[39m { [33mTextarea[39m } [36mfrom[39m [32m'@/components/ui/textarea'[39m[33m;[39m[0m
+[0m [90m  9 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m { [33mAlert[39m[33m,[39m [33mAlertDescription[39m } [36mfrom[39m [32m'@/components/ui/alert'[39m[33m;[39m[0m
+[0m [90m    |[39m [31m[1m^[22m[39m[0m
+[0m [90m 11 |[39m [36mimport[39m { [33mCheckCircle[39m[33m,[39m [33mAlertCircle[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m[0m
+[0m [90m 12 |[39m [36mimport[39m type { [33mEvent[39m } [36mfrom[39m [32m'@/lib/types'[39m[33m;[39m[0m
+[0m [90m 13 |[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+ ⨯ ./src/app/events/[id]/propose/page.tsx:10:1
+Module not found: Can't resolve '@/components/ui/alert'
+[0m [90m  8 |[39m [36mimport[39m { [33mTextarea[39m } [36mfrom[39m [32m'@/components/ui/textarea'[39m[33m;[39m[0m
+[0m [90m  9 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m { [33mAlert[39m[33m,[39m [33mAlertDescription[39m } [36mfrom[39m [32m'@/components/ui/alert'[39m[33m;[39m[0m
+[0m [90m    |[39m [31m[1m^[22m[39m[0m
+[0m [90m 11 |[39m [36mimport[39m { [33mCheckCircle[39m[33m,[39m [33mAlertCircle[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m[0m
+[0m [90m 12 |[39m [36mimport[39m type { [33mEvent[39m } [36mfrom[39m [32m'@/lib/types'[39m[33m;[39m[0m
+[0m [90m 13 |[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+ GET /api/events 500 in 5940ms
+ GET /events/fa818a89-1ff0-43ef-a111-80badb38f9dd/propose 500 in 6023ms
+ GET /api/proposals 500 in 546ms
+ GET /api/events 500 in 561ms
+ GET /api/events 500 in 236ms
+ GET /api/events 500 in 7013ms
+ GET /api/events 500 in 100ms
+ GET /api/events 500 in 96ms
+ GET /api/events 500 in 133ms
+ GET /admin/proposals 500 in 7344ms
+ GET /api/events 500 in 7394ms
+ GET /api/events 500 in 7398ms
+ GET /admin/proposals 500 in 48ms
+ GET /api/proposals 500 in 63ms
+ GET /api/events 500 in 41ms
+ GET /api/events 500 in 45ms
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz_' -> '/Users/benjaminlife/iCloud Drive (Archive)/Documents/cursor projects/quadraticvote/.next/cache/webpack/client-development-fallback/0.pack.gz'
+ GET /api/proposals 500 in 4ms
+ ⨯ ./src/components/ui/alert.tsx:4:1
+Module not found: Can't resolve '@/lib/utils'
+[0m [90m 2 |[39m [36mimport[39m { cva[33m,[39m type [33mVariantProps[39m } [36mfrom[39m [32m"class-variance-authority"[39m[0m
+[0m [90m 3 |[39m[0m
+[0m[31m[1m>[22m[39m[90m 4 |[39m [36mimport[39m { cn } [36mfrom[39m [32m"@/lib/utils"[39m[0m
+[0m [90m   |[39m [31m[1m^[22m[39m[0m
+[0m [90m 5 |[39m[0m
+[0m [90m 6 |[39m [36mconst[39m alertVariants [33m=[39m cva([0m
+[0m [90m 7 |[39m   [32m"relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground"[39m[33m,[39m[0m
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./src/app/events/[id]/propose/page.tsx
+[?25h
