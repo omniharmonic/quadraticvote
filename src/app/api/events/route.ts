@@ -3,6 +3,9 @@ import { eventService } from '@/lib/services/event.service';
 import { createEventSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
+// Force this route to be dynamic (not pre-rendered during build)
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/events
  * Create a new event
