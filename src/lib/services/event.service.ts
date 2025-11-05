@@ -42,7 +42,7 @@ export class EventService {
         showResultsAfterClose: input.showResultsAfterClose,
         // voteSettings: input.voteSettings, // Temporarily disabled until DB migration
         createdBy: userId ? userId : null,
-        adminCode: generateInviteCode(), // Generate unique admin code for event management
+        // adminCode: generateInviteCode(), // Temporarily disabled - column doesn't exist in DB
       };
 
       console.log('DEBUG EventService.createEvent about to insert:', {

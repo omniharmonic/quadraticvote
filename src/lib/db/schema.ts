@@ -69,7 +69,7 @@ export const events = pgTable('events', {
   
   // Ownership and Access
   createdBy: uuid('created_by').references(() => users.id),
-  adminCode: varchar('admin_code', { length: 64 }).notNull().unique(),
+  adminCode: varchar('admin_code', { length: 64 }).unique(), // Made optional - column doesn't exist in current DB
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   
