@@ -26,7 +26,7 @@ export class ProposalService {
     if (!this.areProposalsOpen(event)) throw new Error('Proposal submission is closed');
     
     // 2. Validate submitter authorization if needed
-    if (event.proposalConfig?.access_control === 'invite_only') {
+    if ((event.proposalConfig as any)?.access_control === 'invite_only') {
       if (!input.inviteCode) throw new Error('Invite code required');
       await this.validateSubmitter(event.id, input.submitterEmail, input.inviteCode);
     }

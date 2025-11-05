@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eventService } from '@/lib/services/event.service';
-import { createEventSchema } from '@/lib/validators';
+import { createEventSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 import { redisKeys } from '@/lib/redis/client';
 
@@ -49,14 +49,12 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Validated data:', JSON.stringify(validationResult.data, null, 2));
-    console.log('DEBUG: proposalConfig in validated data:', validationResult.data.proposalConfig);
-    console.log('DEBUG: initialOptions in validated data:', validationResult.data.initialOptions);
 
     // Create event with fallback for visibility and proposalConfig
     const eventData = {
       ...validationResult.data,
-      visibility: validationResult.data.visibility || 'public', // Fallback to public if missing
-      proposalConfig: validationResult.data.proposalConfig || (
+      visibility: (validationResult.data as any).visibility || 'public', // Fallback to public if missing
+      proposalConfig: (validationResult.data as any).proposalConfig || body.proposalConfig || (
         validationResult.data.optionMode === 'community_proposals' ? {
           enabled: true,
           submissionStart: validationResult.data.startTime,
@@ -66,10 +64,10 @@ export async function POST(request: NextRequest) {
         } : null
       ),
       // Restore missing fields from original body
-      initialOptions: validationResult.data.initialOptions || body.initialOptions,
+      initialOptions: (validationResult.data as any).initialOptions || body.initialOptions,
       voteSettings: {
-        ...validationResult.data.voteSettings,
-        allowAnonymous: validationResult.data.voteSettings?.allowAnonymous ?? body.voteSettings?.allowAnonymous
+        ...(validationResult.data as any).voteSettings,
+        allowAnonymous: (validationResult.data as any).voteSettings?.allowAnonymous ?? body.voteSettings?.allowAnonymous
       }
     };
 
@@ -80,9 +78,8 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         event: {
-          id: event.id,
-          url: `/events/${event.id}`,
           ...event,
+          url: `/events/${event.id}`,
         },
       },
       { status: 201 }

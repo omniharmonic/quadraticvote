@@ -2,7 +2,7 @@ import { db } from '@/lib/db/client';
 import { events, options, invites } from '@/lib/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import { generateInviteCode } from '@/lib/utils/auth';
-import type { CreateEventInput } from '@/lib/validators';
+import type { CreateEventInput } from '@/lib/validators/index';
 import type { Event, DecisionFramework } from '@/lib/types';
 
 export class EventService {

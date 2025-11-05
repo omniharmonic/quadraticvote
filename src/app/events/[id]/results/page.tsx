@@ -207,7 +207,7 @@ function TimelineVisualization({ data }: { data: any }) {
       voteCount: Number(item.voteCount),
       totalCredits: Number(item.totalCredits)
     };
-  }).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }).sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   return (
     <ResponsiveContainer width="100%" height={300}>
