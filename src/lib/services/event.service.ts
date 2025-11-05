@@ -1,6 +1,4 @@
-import { db } from '@/lib/db/client';
-import { events, options, invites } from '@/lib/db/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { db } from '@/lib/db/supabase-client';
 import { generateInviteCode } from '@/lib/utils/auth';
 import type { CreateEventInput } from '@/lib/validators/index';
 import type { Event, DecisionFramework } from '@/lib/types';
@@ -26,64 +24,64 @@ export class EventService {
         title: input.title,
         description: input.description,
         tags: input.tags,
-        imageUrl: input.imageUrl,
+        image_url: input.imageUrl,
         visibility: input.visibility || 'public', // Safety fallback
-        startTime: new Date(input.startTime),
-        endTime: new Date(input.endTime),
+        start_time: new Date(input.startTime).toISOString(),
+        end_time: new Date(input.endTime).toISOString(),
         timezone: input.timezone,
-        decisionFramework: input.decisionFramework as any,
-        optionMode: input.optionMode,
-        proposalConfig: input.proposalConfig,
-        creditsPerVoter: input.creditsPerVoter,
-        weightingMode: input.weightingMode,
-        weightingConfig: input.weightingConfig,
-        tokenGating: input.tokenGating,
-        showResultsDuringVoting: input.showResultsDuringVoting,
-        showResultsAfterClose: input.showResultsAfterClose,
-        // voteSettings: input.voteSettings, // Temporarily disabled until DB migration
-        createdBy: userId ? userId : null,
-        // adminCode: generateInviteCode(), // Temporarily disabled - column doesn't exist in DB
+        decision_framework: input.decisionFramework as any,
+        option_mode: input.optionMode,
+        proposal_config: input.proposalConfig,
+        credits_per_voter: input.creditsPerVoter,
+        weighting_mode: input.weightingMode,
+        weighting_config: input.weightingConfig,
+        token_gating: input.tokenGating,
+        show_results_during_voting: input.showResultsDuringVoting,
+        show_results_after_close: input.showResultsAfterClose,
+        // vote_settings: input.voteSettings, // Temporarily disabled until DB migration
+        created_by: userId ? userId : null,
+        // admin_code: generateInviteCode(), // Temporarily disabled - column doesn't exist in DB
       };
 
       console.log('DEBUG EventService.createEvent about to insert:', {
-        proposalConfig: eventData.proposalConfig,
-        optionMode: eventData.optionMode
+        proposalConfig: eventData.proposal_config,
+        optionMode: eventData.option_mode
       });
 
-      const [event] = await tx.insert(events).values(eventData).returning();
+      const event = await tx.events.create(eventData);
 
       console.log('DEBUG EventService.createEvent after insert:', {
         eventId: event.id,
-        proposalConfig: event.proposalConfig,
-        optionMode: event.optionMode
+        proposalConfig: event.proposal_config,
+        optionMode: event.option_mode
       });
-      
+
       // 2. If admin-defined options, insert them
       if (input.optionMode !== 'community_proposals' && input.initialOptions && input.initialOptions.length > 0) {
-        await tx.insert(options).values(
-          input.initialOptions.map((opt, index) => ({
-            eventId: event.id,
-            title: opt.title,
-            description: opt.description,
-            imageUrl: opt.imageUrl,
-            position: index,
-            source: 'admin' as const,
-          }))
-        );
+        const optionData = input.initialOptions.map((opt, index) => ({
+          event_id: event.id,
+          title: opt.title,
+          description: opt.description,
+          image_url: opt.imageUrl,
+          position: index,
+          source: 'admin' as const,
+        }));
+
+        await tx.options.create(optionData);
       }
-      
+
       // 3. If invite list provided, generate codes
       if (input.inviteEmails && input.inviteEmails.length > 0) {
         const inviteRecords = input.inviteEmails.map(email => ({
-          eventId: event.id,
+          event_id: event.id,
           email: email,
           code: generateInviteCode(),
-          inviteType: this.determineInviteType(input) as 'voting' | 'proposal_submission' | 'both',
+          invite_type: this.determineInviteType(input) as 'voting' | 'proposal_submission' | 'both',
         }));
-        
-        await tx.insert(invites).values(inviteRecords);
+
+        await tx.invites.create(inviteRecords);
       }
-      
+
       return event as Event;
     });
   }
@@ -136,21 +134,14 @@ export class EventService {
    * Get event by ID with related data
    */
   async getEventById(eventId: string): Promise<(Event & { options: any[] }) | null> {
-    const eventResults = await db.select().from(events).where(
-      and(
-        eq(events.id, eventId),
-        isNull(events.deletedAt)
-      )
-    ).limit(1);
+    const event = await db.events.findById(eventId);
 
-    if (eventResults.length === 0) {
+    if (!event) {
       return null;
     }
 
-    const event = eventResults[0];
-
     // Fetch options separately
-    const eventOptions = await db.select().from(options).where(eq(options.eventId, eventId));
+    const eventOptions = await db.options.findByEventId(eventId);
 
     return {
       ...event,
@@ -183,13 +174,9 @@ export class EventService {
    * Get all active events
    */
   async getActiveEvents(): Promise<Event[]> {
-    const now = new Date();
-    const result = await db.select().from(events).where(
-      and(
-        isNull(events.deletedAt),
-        eq(events.visibility, 'public')
-      )
-    );
+    const result = await db.events.findMany({
+      visibility: 'public'
+    });
 
     return result as Event[];
   }
