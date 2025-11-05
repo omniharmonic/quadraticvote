@@ -15,6 +15,7 @@ export class ProposalService {
     imageUrl?: string;
     submitterEmail: string;
     submitterWallet?: string;
+    payoutWallet?: string;
     inviteCode?: string;
   }): Promise<Proposal> {
     // 1. Validate event accepts proposals
@@ -36,28 +37,38 @@ export class ProposalService {
     // 4. Determine initial status based on moderation mode
     const initialStatus = this.getInitialStatus(event.proposalConfig);
     
-    // 5. Insert proposal
-    const [proposal] = await db.insert(proposals).values({
-      eventId: input.eventId,
-      title: input.title,
-      description: input.description,
-      imageUrl: input.imageUrl,
-      submitterEmail: input.submitterEmail,
-      submitterWallet: input.submitterWallet,
-      submitterAnonymousId: anonymousId,
-      status: initialStatus,
-      submittedAt: initialStatus !== 'draft' ? new Date() : null,
-    }).returning();
-    
-    // 6. Update invite tracking if applicable
-    if (input.inviteCode) {
-      await db.update(invites)
-        .set({ 
-          proposalsSubmitted: 1, // Simplified for now
-        })
-        .where(eq(invites.code, input.inviteCode));
-    }
-    
+    // 5. Insert proposal and auto-convert if approved
+    let proposal: any;
+
+    await db.transaction(async (tx) => {
+      [proposal] = await tx.insert(proposals).values({
+        eventId: input.eventId,
+        title: input.title,
+        description: input.description,
+        imageUrl: input.imageUrl,
+        submitterEmail: input.submitterEmail,
+        submitterWallet: input.submitterWallet,
+        payoutWallet: input.payoutWallet,
+        submitterAnonymousId: anonymousId,
+        status: initialStatus,
+        submittedAt: initialStatus !== 'draft' ? new Date() : null,
+      }).returning();
+
+      // 6. Auto-convert to option if approved (moderation disabled)
+      if (initialStatus === 'approved') {
+        await this.convertSingleProposalToOption(proposal, tx);
+      }
+
+      // 7. Update invite tracking if applicable
+      if (input.inviteCode) {
+        await tx.update(invites)
+          .set({
+            proposalsSubmitted: 1, // Simplified for now
+          })
+          .where(eq(invites.code, input.inviteCode));
+      }
+    });
+
     return proposal as Proposal;
   }
   
@@ -65,13 +76,91 @@ export class ProposalService {
    * Check if proposals are currently open
    */
   private areProposalsOpen(event: any): boolean {
-    if (event.optionMode === 'admin_defined') return false;
-    if (!event.proposalConfig?.enabled) return false;
-    
+    console.log('DEBUG: Checking if proposals are open for event:', {
+      eventId: event.id,
+      optionMode: event.optionMode,
+      proposalConfig: event.proposalConfig,
+      startTime: event.startTime,
+      endTime: event.endTime
+    });
+
+    if (event.optionMode === 'admin_defined') {
+      console.log('DEBUG: Proposals blocked - admin_defined mode');
+      return false;
+    }
+
+    // Check if proposalConfig exists and is properly configured
+    if (!event.proposalConfig) {
+      console.log('DEBUG: Proposals blocked - no proposalConfig found');
+      return false;
+    }
+
+    // If enabled is explicitly false, block proposals
+    if (event.proposalConfig.enabled === false) {
+      console.log('DEBUG: Proposals blocked - explicitly disabled in config');
+      return false;
+    }
+
     const now = new Date();
-    const { submission_start, submission_end } = event.proposalConfig;
-    
-    return now >= new Date(submission_start) && now <= new Date(submission_end);
+    console.log('DEBUG: Current time:', now.toISOString());
+
+    // Support both camelCase and snake_case for backwards compatibility
+    const submissionStart = event.proposalConfig.submissionStart || event.proposalConfig.submission_start;
+    const submissionEnd = event.proposalConfig.submissionEnd || event.proposalConfig.submission_end;
+
+    console.log('DEBUG: Submission window from config:', {
+      submissionStart,
+      submissionEnd,
+      hasSubmissionWindow: !!(submissionStart && submissionEnd),
+      configKeys: Object.keys(event.proposalConfig || {})
+    });
+
+    if (!submissionStart || !submissionEnd) {
+      // If no submission window specified, allow submissions during event time
+      const eventStart = new Date(event.startTime);
+      const eventEnd = new Date(event.endTime);
+      const isWithinEventTime = now >= eventStart && now <= eventEnd;
+
+      console.log('DEBUG: No submission window, checking event time:', {
+        eventStart: eventStart.toISOString(),
+        eventEnd: eventEnd.toISOString(),
+        isWithinEventTime
+      });
+
+      return isWithinEventTime;
+    }
+
+    // Parse submission window with proper timezone handling
+    let startTime, endTime;
+    try {
+      startTime = new Date(submissionStart);
+      endTime = new Date(submissionEnd);
+
+      // Validate dates are valid
+      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        console.log('DEBUG: Invalid submission dates, falling back to event time');
+        const eventStart = new Date(event.startTime);
+        const eventEnd = new Date(event.endTime);
+        return now >= eventStart && now <= eventEnd;
+      }
+    } catch (error) {
+      console.log('DEBUG: Error parsing submission dates:', error);
+      // Fall back to event time window
+      const eventStart = new Date(event.startTime);
+      const eventEnd = new Date(event.endTime);
+      return now >= eventStart && now <= eventEnd;
+    }
+
+    const isWithinSubmissionWindow = now >= startTime && now <= endTime;
+
+    console.log('DEBUG: Checking submission window:', {
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      isWithinSubmissionWindow,
+      nowIsoString: now.toISOString()
+    });
+
+    return isWithinSubmissionWindow;
   }
   
   /**
@@ -101,9 +190,9 @@ export class ProposalService {
    */
   private getInitialStatus(proposalConfig: any): string {
     if (!proposalConfig) return 'pending_approval';
-    
+
     const { moderation_mode } = proposalConfig;
-    
+
     switch (moderation_mode) {
       case 'pre_approval':
         return 'pending_approval';
@@ -115,6 +204,40 @@ export class ProposalService {
       default:
         return 'pending_approval';
     }
+  }
+
+  /**
+   * Convert a single proposal to an option
+   */
+  private async convertSingleProposalToOption(proposal: any, tx?: any): Promise<void> {
+    const dbClient = tx || db;
+
+    // Skip if already converted
+    if (proposal.convertedToOptionId) return;
+
+    // Get current max position for this event
+    const existingOptions = await dbClient.select()
+      .from(options)
+      .where(eq(options.eventId, proposal.eventId))
+      .orderBy(desc(options.position));
+
+    const nextPosition = existingOptions.length > 0 ? existingOptions[0].position + 1 : 0;
+
+    // Insert as option
+    const [option] = await dbClient.insert(options).values({
+      eventId: proposal.eventId,
+      title: proposal.title,
+      description: proposal.description,
+      imageUrl: proposal.imageUrl,
+      position: nextPosition,
+      source: 'community',
+      createdByProposalId: proposal.id,
+    }).returning();
+
+    // Update proposal with option ID
+    await dbClient.update(proposals)
+      .set({ convertedToOptionId: option.id })
+      .where(eq(proposals.id, proposal.id));
   }
   
   /**
@@ -147,16 +270,25 @@ export class ProposalService {
   }
   
   /**
-   * Approve proposal (admin action)
+   * Approve proposal (admin action) - automatically converts to option
    */
   async approveProposal(proposalId: string, adminUserId: string | null): Promise<void> {
-    await db.update(proposals)
-      .set({
-        status: 'approved',
-        approvedAt: new Date(),
-        approvedBy: adminUserId,
-      })
-      .where(eq(proposals.id, proposalId));
+    await db.transaction(async (tx) => {
+      // 1. Update proposal status
+      const [proposal] = await tx.update(proposals)
+        .set({
+          status: 'approved',
+          approvedAt: new Date(),
+          approvedBy: adminUserId,
+        })
+        .where(eq(proposals.id, proposalId))
+        .returning();
+
+      if (!proposal) throw new Error('Proposal not found');
+
+      // 2. Automatically convert to option
+      await this.convertSingleProposalToOption(proposal, tx);
+    });
   }
   
   /**

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from '@/hooks/use-toast';
 import { AlertCircle, Check, Info, RefreshCw } from 'lucide-react';
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
+import Navigation from '@/components/layout/navigation';
 
 export default function VotingPage() {
   const params = useParams();
@@ -29,15 +30,20 @@ export default function VotingPage() {
   const [codeInput, setCodeInput] = useState<string>('');
   const [codeVerified, setCodeVerified] = useState<boolean>(false);
 
-  // Get code from URL params or require manual entry
+  // Get code from URL params or allow anonymous access for public events
   useEffect(() => {
     const urlCode = searchParams?.get('code');
     if (urlCode) {
       setInviteCode(urlCode);
       setCodeInput(urlCode);
       setCodeVerified(true);
+    } else if (event?.visibility === 'public') {
+      // Allow anonymous participation for public events by default
+      // (voteSettings field is temporarily disabled, so default to allowing anonymous)
+      setInviteCode('anonymous');
+      setCodeVerified(true);
     }
-  }, [searchParams]);
+  }, [searchParams, event]);
 
   useEffect(() => {
     fetchEvent();
@@ -191,16 +197,45 @@ export default function VotingPage() {
 
   // Show code entry screen if no valid code
   if (!codeVerified) {
+    const isPublicEvent = event?.visibility === 'public';
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Enter Your Invite Code</CardTitle>
+            <CardTitle className="text-2xl">
+              {isPublicEvent ? 'Join the Vote' : 'Enter Your Invite Code'}
+            </CardTitle>
             <CardDescription>
-              You need a valid invite code to participate in this voting event.
+              {isPublicEvent
+                ? 'This is a public voting event. You can participate with or without an invite code.'
+                : 'You need a valid invite code to participate in this voting event.'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {isPublicEvent && (
+              <div className="mb-4">
+                <Button
+                  onClick={() => {
+                    setInviteCode('anonymous');
+                    setCodeVerified(true);
+                  }}
+                  className="w-full mb-4"
+                >
+                  Continue as Anonymous Voter
+                </Button>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or use invite code</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleCodeSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="code">Invite Code</Label>
@@ -246,9 +281,11 @@ export default function VotingPage() {
   const displayOptions = event.options || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-      {/* Fixed Header */}
-      <div className="sticky top-0 z-10 bg-white border-b shadow-sm">
+    <>
+      <Navigation eventId={params.id as string} eventTitle={event.title} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+        {/* Fixed Header */}
+        <div className="sticky top-0 z-10 bg-white border-b shadow-sm">
         <div className="max-w-4xl mx-auto p-4">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -301,7 +338,7 @@ export default function VotingPage() {
         </div>
 
         <div className="space-y-4">
-          {displayOptions.map((option: any) => {
+          {displayOptions.map((option: any, optionIndex: number) => {
             const credits = allocations[option.id] || 0;
             const votes = quadraticVotes[option.id] || 0;
             const percentage = usedCredits > 0 ? (votes / Object.values(quadraticVotes).reduce((a, b) => a + b, 0)) * 100 : 0;
@@ -335,6 +372,7 @@ export default function VotingPage() {
                     
                     <Slider
                       key={`slider-${option.id}`}
+                      data-testid={`allocation-${optionIndex}`}
                       value={[credits]}
                       onValueChange={(value) => {
                         // Ensure we're only updating this specific option
@@ -438,7 +476,8 @@ export default function VotingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 }
 

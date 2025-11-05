@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useAdmin } from '@/contexts/AdminContext';
 import Navigation from '@/components/layout/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,15 +25,27 @@ import Link from 'next/link';
 
 export default function EventManagementPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const { setAdminCode, getAdminCode } = useAdmin();
   const eventId = params.id as string;
+
+  // Get admin code from URL or context
+  const adminCodeParam = searchParams.get('code');
+  const adminCode = adminCodeParam || getAdminCode(eventId);
 
   const [event, setEvent] = useState<any>(null);
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Store admin code if provided in URL
+    const adminCodeParam = searchParams.get('code');
+    if (adminCodeParam) {
+      setAdminCode(adminCodeParam);
+    }
+
     fetchEventData();
-  }, [eventId]);
+  }, [eventId, searchParams, setAdminCode]);
 
   const fetchEventData = async () => {
     try {
@@ -235,13 +248,13 @@ export default function EventManagementPage() {
                 Create and send invite codes to participants
               </p>
               <div className="space-y-2">
-                <Link href={`/admin/events/${eventId}/invites`}>
+                <Link href={`/admin/events/${eventId}/invites${adminCode ? `?code=${adminCode}` : ''}`}>
                   <Button className="w-full" variant="outline">
                     <Mail className="w-4 h-4 mr-2" />
                     Invite Management
                   </Button>
                 </Link>
-                <Link href={`/admin/events/${eventId}/invites/batch`}>
+                <Link href={`/admin/events/${eventId}/invites/batch${adminCode ? `?code=${adminCode}` : ''}`}>
                   <Button className="w-full" variant="outline">
                     Send Batch Invites
                   </Button>
@@ -295,12 +308,12 @@ export default function EventManagementPage() {
                 Configure event options and settings
               </p>
               <div className="space-y-2">
-                <Link href={`/admin/events/${eventId}/options`}>
+                <Link href={`/admin/events/${eventId}/options${adminCode ? `?code=${adminCode}` : ''}`}>
                   <Button className="w-full" variant="outline">
                     Manage Options
                   </Button>
                 </Link>
-                <Link href={`/admin/events/${eventId}/settings`}>
+                <Link href={`/admin/events/${eventId}/settings${adminCode ? `?code=${adminCode}` : ''}`}>
                   <Button className="w-full" variant="outline">
                     Event Settings
                   </Button>
@@ -319,17 +332,12 @@ export default function EventManagementPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-gray-600">
-                View voting results and participation analytics
+                View voting results with advanced analytics dashboard including network graphs, cluster analysis, and real-time visualizations
               </p>
               <div className="space-y-2">
                 <Link href={`/events/${eventId}/results`}>
                   <Button className="w-full" variant="outline">
-                    View Results
-                  </Button>
-                </Link>
-                <Link href={`/admin/events/${eventId}/analytics`}>
-                  <Button className="w-full" variant="outline">
-                    Analytics Dashboard
+                    View Results & Analytics
                   </Button>
                 </Link>
               </div>

@@ -1,95 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { invites } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
+import { invites, events } from '@/lib/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
+import { generateInviteCode } from '@/lib/utils/auth';
+import { verifyAdminCode } from '@/lib/utils/admin-auth';
 
-/**
- * GET /api/events/[id]/invites
- * Get all invites for an event
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const eventId = params.id;
+    const url = new URL(request.url);
+    const adminCode = url.searchParams.get('code');
 
-    const eventInvites = await db.select().from(invites).where(eq(invites.eventId, eventId));
+    // Verify admin access
+    if (!adminCode || !(await verifyAdminCode(eventId, adminCode))) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    // Get all invites for the event
+    const eventInvites = await db.select()
+      .from(invites)
+      .where(eq(invites.eventId, eventId))
+      .orderBy(desc(invites.createdAt));
 
     return NextResponse.json({
       success: true,
-      invites: eventInvites,
+      invites: eventInvites
     });
   } catch (error) {
     console.error('Error fetching invites:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch invites',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to fetch invites' },
       { status: 500 }
     );
   }
 }
 
-/**
- * POST /api/events/[id]/invites
- * Create new invites for an event
- */
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const eventId = params.id;
-    const { email, inviteType, count = 1 } = await request.json();
+    const url = new URL(request.url);
+    const adminCode = url.searchParams.get('code');
 
-    if (!email || !inviteType) {
+    // Verify admin access
+    if (!adminCode || !(await verifyAdminCode(eventId, adminCode))) {
       return NextResponse.json(
-        { success: false, error: 'Email and invite type are required' },
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { email, inviteType = 'voting' } = body;
+
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email is required' },
         { status: 400 }
       );
     }
 
-    if (count < 1 || count > 100) {
+    // Check if invite already exists for this email and event
+    const existingInvite = await db.select()
+      .from(invites)
+      .where(and(
+        eq(invites.eventId, eventId),
+        eq(invites.email, email)
+      ))
+      .limit(1);
+
+    if (existingInvite.length > 0) {
       return NextResponse.json(
-        { success: false, error: 'Count must be between 1 and 100' },
+        { error: 'Invite already exists for this email' },
         { status: 400 }
       );
     }
 
-    const createdInvites = [];
+    // Create new invite
+    const inviteData = {
+      eventId,
+      email,
+      code: generateInviteCode(),
+      inviteType: inviteType as 'voting' | 'proposal_submission' | 'both',
+      sentAt: new Date(),
+    };
 
-    // Create multiple invites
-    for (let i = 0; i < count; i++) {
-      const code = nanoid(16); // Generate unique code
-
-      const [invite] = await db.insert(invites).values({
-        eventId: eventId,
-        email: email,
-        code: code,
-        inviteType: inviteType,
-        metadata: {},
-      }).returning();
-
-      createdInvites.push(invite);
-    }
+    const [newInvite] = await db.insert(invites).values(inviteData).returning();
 
     return NextResponse.json({
       success: true,
-      invites: createdInvites,
-      message: `${count} invite(s) created successfully`,
+      invite: newInvite,
+      message: 'Invite created successfully'
     });
   } catch (error) {
-    console.error('Error creating invites:', error);
+    console.error('Error creating invite:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to create invites',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Failed to create invite' },
       { status: 500 }
     );
   }

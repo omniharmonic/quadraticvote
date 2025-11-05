@@ -89,11 +89,11 @@ test.describe('Complete User Journey E2E Test', () => {
 
     // Test Event Settings page
     console.log('2a: Testing Event Settings page...');
-    await page.click('text=Event Settings');
+    await page.click('a[href*="/settings"]:has-text("Event Settings")');
     await page.waitForTimeout(2000);
 
     // Should be on settings page now
-    await expect(page.locator('text=Event Settings')).toBeVisible();
+    await expect(page.locator('h1:has-text("Event Settings")')).toBeVisible();
     await expect(page.locator('text=Basic Information')).toBeVisible();
     await expect(page.locator('text=Event Schedule')).toBeVisible();
     console.log('✅ Event Settings page working');
@@ -104,11 +104,11 @@ test.describe('Complete User Journey E2E Test', () => {
 
     // Test Analytics Dashboard
     console.log('2b: Testing Analytics Dashboard...');
-    await page.click('text=Analytics Dashboard');
+    await page.click('a[href*="/analytics"]:has-text("Analytics Dashboard")');
     await page.waitForTimeout(2000);
 
     // Should be on analytics page now
-    await expect(page.locator('text=Analytics Dashboard')).toBeVisible();
+    await expect(page.locator('h1:has-text("Analytics Dashboard")')).toBeVisible();
     await expect(page.locator('text=Total Participants')).toBeVisible();
     await expect(page.locator('text=Option Performance')).toBeVisible();
     console.log('✅ Analytics Dashboard working');
@@ -119,11 +119,11 @@ test.describe('Complete User Journey E2E Test', () => {
 
     // Test Options Management
     console.log('2c: Testing Options Management...');
-    await page.click('text=Manage Options');
+    await page.click('a[href*="/options"]:has-text("Manage Options")');
     await page.waitForTimeout(2000);
 
     // Should be on options page now
-    await expect(page.locator('text=Manage Options')).toBeVisible();
+    await expect(page.locator('h1:has-text("Manage Options")')).toBeVisible();
     await expect(page.locator('text=Option A - Parks')).toBeVisible();
     await expect(page.locator('text=Option B - Infrastructure')).toBeVisible();
     console.log('✅ Options Management working');
@@ -134,11 +134,11 @@ test.describe('Complete User Journey E2E Test', () => {
 
     // STEP 3: Test Invite Management (critical for voting)
     console.log('Step 3: Testing invite management...');
-    await page.click('text=Invite Management');
+    await page.click('a[href*="/invites"]:has-text("Invite Management")');
     await page.waitForTimeout(2000);
 
     // Should be on invite management page
-    await expect(page.locator('text=Invite Management')).toBeVisible();
+    await expect(page.locator('h1:has-text("Invite Management")')).toBeVisible();
     await expect(page.locator('text=Single Invite')).toBeVisible();
     console.log('✅ Invite Management page accessible');
 
@@ -170,11 +170,15 @@ test.describe('Complete User Journey E2E Test', () => {
     // STEP 4: Test Public Event Page
     console.log('Step 4: Testing public event page...');
     await page.click('text=Public Event Page');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(3000);
+
+    // Wait for page to load completely
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('text=Complete Journey Test Event', { timeout: 10000 });
 
     // Should be on public event page
     await expect(page.locator('text=Complete Journey Test Event')).toBeVisible();
-    await expect(page.locator('text=Option A - Parks')).toBeVisible();
+    await expect(page.locator('text=Option A - Parks')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('text=Vote on Options')).toBeVisible();
     console.log('✅ Public event page working');
 

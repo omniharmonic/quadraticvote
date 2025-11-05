@@ -63,9 +63,13 @@ export const events = pgTable('events', {
   // Results configuration
   showResultsDuringVoting: boolean('show_results_during_voting').default(false),
   showResultsAfterClose: boolean('show_results_after_close').default(true),
+
+  // Vote settings - temporarily disabled until migration
+  // voteSettings: jsonb('vote_settings'),
   
-  // Ownership
+  // Ownership and Access
   createdBy: uuid('created_by').references(() => users.id),
+  adminCode: varchar('admin_code', { length: 64 }).notNull().unique(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   
@@ -116,7 +120,8 @@ export const proposals = pgTable('proposals', {
   
   // Submitter (anonymized)
   submitterEmail: varchar('submitter_email', { length: 255 }).notNull(),
-  submitterWallet: varchar('submitter_wallet', { length: 42 }),
+  submitterWallet: varchar('submitter_wallet', { length: 100 }),
+  payoutWallet: varchar('payout_wallet', { length: 100 }),
   submitterAnonymousId: varchar('submitter_anonymous_id', { length: 64 }).notNull(),
   
   // Status tracking
@@ -189,7 +194,7 @@ export const invites = pgTable('invites', {
 export const votes = pgTable('votes', {
   id: uuid('id').primaryKey().defaultRandom(),
   eventId: uuid('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
-  inviteCode: varchar('invite_code', { length: 64 }).notNull().references(() => invites.code),
+  inviteCode: varchar('invite_code', { length: 64 }).notNull(), // Temporarily removed FK constraint for anonymous voting
   
   // Allocations: { option_id: credits_allocated }
   allocations: jsonb('allocations').notNull(),

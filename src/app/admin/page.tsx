@@ -2,10 +2,13 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, FileText, Settings, BarChart3 } from 'lucide-react';
+import Navigation from '@/components/layout/navigation';
 
 export default function AdminDashboard() {
   return (
-    <div className="container mx-auto py-8">
+    <>
+      <Navigation />
+      <div className="container mx-auto py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <p className="text-gray-600 mt-2">Manage events, proposals, and system settings</p>
@@ -120,6 +123,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

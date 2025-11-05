@@ -1,0 +1,44 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e5]:
+    - button "Back" [ref=e6] [cursor=pointer]:
+      - img [ref=e7]
+      - text: Back
+    - link "Home" [ref=e9] [cursor=pointer]:
+      - /url: /
+      - button "Home" [ref=e10]:
+        - img [ref=e11]
+        - text: Home
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - heading "Create New Event" [level=1] [ref=e17]
+      - paragraph [ref=e18]: Set up your quadratic voting event in 4 simple steps
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - heading "Decision Framework" [level=3] [ref=e23]
+        - paragraph [ref=e24]: Choose how results will be determined
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - button "Binary Selection Choose winners from options. Best for competitions, awards, or selecting projects. Competitive" [ref=e27] [cursor=pointer]:
+            - img [ref=e28]
+            - heading "Binary Selection" [level=3] [ref=e32]
+            - paragraph [ref=e33]: Choose winners from options. Best for competitions, awards, or selecting projects.
+            - generic [ref=e34]: Competitive
+          - button "Proportional Distribution Allocate resources proportionally. Best for budgets, grants, or resource allocation. Collaborative" [ref=e35] [cursor=pointer]:
+            - img [ref=e36]
+            - heading "Proportional Distribution" [level=3] [ref=e38]
+            - paragraph [ref=e39]: Allocate resources proportionally. Best for budgets, grants, or resource allocation.
+            - generic [ref=e40]: Collaborative
+        - generic [ref=e41]:
+          - button "Back" [ref=e42] [cursor=pointer]:
+            - img [ref=e43]
+            - text: Back
+          - 'button "Next: Option Mode" [disabled]':
+            - text: "Next: Option Mode"
+            - img
+  - region "Notifications (F8)":
+    - list
+  - alert [ref=e45]
+```

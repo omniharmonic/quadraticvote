@@ -38,7 +38,7 @@ export async function checkRateLimit(
  */
 export const RATE_LIMITS = {
   VOTE_SUBMISSION: { limit: 10, window: 60 }, // 10 per minute
-  PROPOSAL_SUBMISSION: { limit: 3, window: 3600 }, // 3 per hour
+  PROPOSAL_SUBMISSION: { limit: 10, window: 3600 }, // 10 per hour
   INVITE_VALIDATION: { limit: 20, window: 60 }, // 20 per minute
   API_GENERAL: { limit: 100, window: 60 }, // 100 per minute
 };

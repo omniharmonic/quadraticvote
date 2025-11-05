@@ -12,16 +12,22 @@ export class EventService {
   async createEvent(input: CreateEventInput, userId?: string): Promise<Event> {
     // Validate decision framework
     this.validateDecisionFramework(input.decisionFramework);
-    
+
+    console.log('DEBUG EventService.createEvent input:', {
+      proposalConfig: input.proposalConfig,
+      optionMode: input.optionMode,
+      title: input.title
+    });
+
     // Begin transaction
     return await db.transaction(async (tx) => {
       // 1. Insert event
-      const [event] = await tx.insert(events).values({
+      const eventData = {
         title: input.title,
         description: input.description,
         tags: input.tags,
         imageUrl: input.imageUrl,
-        visibility: input.visibility,
+        visibility: input.visibility || 'public', // Safety fallback
         startTime: new Date(input.startTime),
         endTime: new Date(input.endTime),
         timezone: input.timezone,
@@ -34,8 +40,23 @@ export class EventService {
         tokenGating: input.tokenGating,
         showResultsDuringVoting: input.showResultsDuringVoting,
         showResultsAfterClose: input.showResultsAfterClose,
+        // voteSettings: input.voteSettings, // Temporarily disabled until DB migration
         createdBy: userId ? userId : null,
-      }).returning();
+        adminCode: generateInviteCode(), // Generate unique admin code for event management
+      };
+
+      console.log('DEBUG EventService.createEvent about to insert:', {
+        proposalConfig: eventData.proposalConfig,
+        optionMode: eventData.optionMode
+      });
+
+      const [event] = await tx.insert(events).values(eventData).returning();
+
+      console.log('DEBUG EventService.createEvent after insert:', {
+        eventId: event.id,
+        proposalConfig: event.proposalConfig,
+        optionMode: event.optionMode
+      });
       
       // 2. If admin-defined options, insert them
       if (input.optionMode !== 'community_proposals' && input.initialOptions && input.initialOptions.length > 0) {

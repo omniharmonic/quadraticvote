@@ -15,11 +15,7 @@ import {
   XCircle,
   Clock,
   FileText,
-  Users,
-  ArrowUpDown,
   ExternalLink,
-  MoreHorizontal,
-  Eye
 } from 'lucide-react';
 import Navigation from '@/components/layout/navigation';
 
@@ -160,36 +156,6 @@ export default function AdminProposalsPage() {
     }
   };
 
-  const handleConvertProposals = async (eventId: string) => {
-    setActionLoading('convert-' + eventId);
-
-    try {
-      const response = await fetch(`/api/events/${eventId}/proposals/convert`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: 'Proposals converted',
-          description: `${data.converted || 0} approved proposals have been converted to voting options.`,
-        });
-        fetchProposals(); // Refresh the list
-      } else {
-        throw new Error(data.message || 'Failed to convert proposals');
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to convert proposals',
-        variant: 'destructive',
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -413,23 +379,6 @@ export default function AdminProposalsPage() {
                       </>
                     )}
 
-                    {proposal.status === 'approved' && !proposal.convertedToOptionId && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleConvertProposals(proposal.eventId)}
-                        disabled={actionLoading === 'convert-' + proposal.eventId}
-                      >
-                        {actionLoading === 'convert-' + proposal.eventId ? (
-                          'Converting...'
-                        ) : (
-                          <>
-                            <ArrowUpDown className="w-4 h-4 mr-2" />
-                            Convert to Option
-                          </>
-                        )}
-                      </Button>
-                    )}
 
                     <Button
                       size="sm"

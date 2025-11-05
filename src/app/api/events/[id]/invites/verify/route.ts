@@ -22,6 +22,32 @@ export async function POST(
       );
     }
 
+    // Verify the event exists first
+    const eventResults = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
+    const event = eventResults[0];
+
+    if (!event) {
+      return NextResponse.json({
+        success: false,
+        valid: false,
+        error: 'Event not found'
+      });
+    }
+
+    // Handle anonymous access for public events
+    if (code === 'anonymous' && event.visibility === 'public') {
+      return NextResponse.json({
+        success: true,
+        valid: true,
+        invite: {
+          id: 'anonymous',
+          email: 'anonymous@example.com',
+          inviteType: 'voting',
+          openedAt: new Date()
+        }
+      });
+    }
+
     // Find the invite
     const inviteResults = await db.select().from(invites).where(
       and(
@@ -49,17 +75,6 @@ export async function POST(
       });
     }
 
-    // Verify the event exists and is accessible
-    const eventResults = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
-    const event = eventResults[0];
-
-    if (!event) {
-      return NextResponse.json({
-        success: false,
-        valid: false,
-        error: 'Event not found'
-      });
-    }
 
     // Update invite tracking - mark as opened if not already
     if (!invite.openedAt) {

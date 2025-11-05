@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { voteService } from '@/lib/services/vote.service';
-import { submitVoteSchema } from '@/lib/validators';
+import { submitVoteSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 import { redisKeys } from '@/lib/redis/client';
 
@@ -13,27 +13,36 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Rate limiting
+    // Rate limiting - with graceful degradation
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    const rateLimitKey = redisKeys.rateLimit('vote', ip);
-    const { allowed } = await checkRateLimit(
-      rateLimitKey,
-      RATE_LIMITS.VOTE_SUBMISSION.limit,
-      RATE_LIMITS.VOTE_SUBMISSION.window
-    );
-
-    if (!allowed) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded. Please try again later.' },
-        { status: 429 }
+    try {
+      const rateLimitKey = redisKeys.rateLimit('vote', ip);
+      const { allowed } = await checkRateLimit(
+        rateLimitKey,
+        RATE_LIMITS.VOTE_SUBMISSION.limit,
+        RATE_LIMITS.VOTE_SUBMISSION.window
       );
+
+      if (!allowed) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded. Please try again later.' },
+          { status: 429 }
+        );
+      }
+    } catch (rateLimitError) {
+      console.warn('Rate limiting failed for vote submission, proceeding without rate limit:', rateLimitError);
+      // Continue without rate limiting if Redis is unavailable
     }
 
     // Parse and validate request body
     const body = await request.json();
+    console.log('Vote submission request body:', JSON.stringify(body, null, 2));
+    console.log('Event ID from params:', params.id);
+
     const validationResult = submitVoteSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.log('Vote validation failed:', validationResult.error.format());
       return NextResponse.json(
         {
           error: 'Validation failed',
@@ -42,6 +51,8 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    console.log('Vote validated data:', JSON.stringify(validationResult.data, null, 2));
 
     // Submit vote
     const vote = await voteService.submitVote(

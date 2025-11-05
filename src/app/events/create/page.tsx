@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAdmin } from '@/contexts/AdminContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, ArrowRight, Check, Sparkles, Target } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Sparkles, Target, Settings2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import Navigation from '@/components/layout/navigation';
 
 type Framework = 'binary_selection' | 'proportional_distribution' | null;
 type OptionMode = 'admin_defined' | 'community_proposals' | 'hybrid' | null;
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 interface EventFormData {
   title: string;
@@ -42,10 +45,19 @@ interface EventFormData {
     accessControl: 'open' | 'invite_only';
     maxProposalsPerUser: number;
   };
+  voteSettings?: {
+    allowVoteChanges: boolean;
+    allowLateSubmissions: boolean;
+    showLiveResults: boolean;
+    requireEmailVerification: boolean;
+    allowAnonymous: boolean;
+    requireModeration: boolean;
+  };
 }
 
 export default function CreateEventPage() {
   const router = useRouter();
+  const { setAdminCode } = useAdmin();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -64,6 +76,14 @@ export default function CreateEventPage() {
       moderationMode: 'pre_approval',
       accessControl: 'open',
       maxProposalsPerUser: 3
+    },
+    voteSettings: {
+      allowVoteChanges: false,
+      allowLateSubmissions: false,
+      showLiveResults: false,
+      requireEmailVerification: false,
+      allowAnonymous: true,
+      requireModeration: false
     }
   });
 
@@ -123,11 +143,11 @@ export default function CreateEventPage() {
         }
         return false;
       case 5:
-        // For admin_defined, require at least 2 options
-        if (formData.optionMode === 'admin_defined') {
+        // For admin_defined and hybrid, require at least 2 options
+        if (formData.optionMode === 'admin_defined' || formData.optionMode === 'hybrid') {
           return formData.options.filter(o => o.title.trim()).length >= 2;
         }
-        // For community_proposals or hybrid, no options required
+        // For community_proposals, no options required
         return true;
       default:
         return false;
@@ -172,7 +192,8 @@ export default function CreateEventPage() {
           optionMode: formData.optionMode,
           proposalConfig: formData.optionMode !== 'admin_defined' ? formData.proposalConfig : undefined,
           creditsPerVoter: formData.creditsPerVoter,
-          initialOptions: formData.optionMode === 'admin_defined' ? formData.options.filter(o => o.title.trim()) : undefined,
+          initialOptions: (formData.optionMode === 'admin_defined' || formData.optionMode === 'hybrid') ? formData.options.filter(o => o.title.trim()) : undefined,
+          voteSettings: formData.voteSettings,
         }),
       });
 
@@ -183,7 +204,12 @@ export default function CreateEventPage() {
           title: 'Event created successfully!',
           description: 'Your event has been created and is ready to use.',
         });
-        router.push(`/admin/events/${data.event.id}`);
+
+        // Store admin code for future use
+        setAdminCode(data.event.adminCode);
+
+        // Redirect to admin page with admin code
+        router.push(`/admin/events/${data.event.id}?code=${data.event.adminCode}`);
       } else {
         throw new Error(data.message || 'Failed to create event');
       }
@@ -198,11 +224,13 @@ export default function CreateEventPage() {
     }
   };
 
-  const progress = (currentStep / 5) * 100;
+  const progress = (currentStep / 6) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Create New Event</h1>
@@ -267,17 +295,17 @@ export default function CreateEventPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="visibility">Visibility</Label>
-                <Select 
-                  value={formData.visibility} 
+                <Select
+                  value={formData.visibility}
                   onValueChange={(value: any) => updateFormData({ visibility: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="visibility-trigger">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="public">Public - Anyone can view</SelectItem>
-                    <SelectItem value="unlisted">Unlisted - Only with link</SelectItem>
-                    <SelectItem value="private">Private - Invite only</SelectItem>
+                    <SelectItem value="public" data-testid="visibility-public">Public - Anyone can view</SelectItem>
+                    <SelectItem value="unlisted" data-testid="visibility-unlisted">Unlisted - Only with link</SelectItem>
+                    <SelectItem value="private" data-testid="visibility-private">Private - Invite only</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -361,7 +389,13 @@ export default function CreateEventPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 gap-4">
                 <button
-                  onClick={() => updateFormData({ optionMode: 'admin_defined' })}
+                  onClick={() => updateFormData({
+                    optionMode: 'admin_defined',
+                    proposalConfig: {
+                      ...formData.proposalConfig!,
+                      enabled: false
+                    }
+                  })}
                   className={`relative p-6 border-2 rounded-lg text-left transition-all ${
                     formData.optionMode === 'admin_defined'
                       ? 'border-green-500 bg-green-50'
@@ -384,7 +418,15 @@ export default function CreateEventPage() {
                 </button>
 
                 <button
-                  onClick={() => updateFormData({ optionMode: 'community_proposals' })}
+                  onClick={() => updateFormData({
+                    optionMode: 'community_proposals',
+                    proposalConfig: {
+                      ...formData.proposalConfig!,
+                      enabled: true,
+                      submissionStart: formData.startTime || new Date().toISOString().slice(0, 16),
+                      submissionEnd: formData.endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+                    }
+                  })}
                   className={`relative p-6 border-2 rounded-lg text-left transition-all ${
                     formData.optionMode === 'community_proposals'
                       ? 'border-blue-500 bg-blue-50'
@@ -407,7 +449,15 @@ export default function CreateEventPage() {
                 </button>
 
                 <button
-                  onClick={() => updateFormData({ optionMode: 'hybrid' })}
+                  onClick={() => updateFormData({
+                    optionMode: 'hybrid',
+                    proposalConfig: {
+                      ...formData.proposalConfig!,
+                      enabled: true,
+                      submissionStart: formData.startTime || new Date().toISOString().slice(0, 16),
+                      submissionEnd: formData.endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+                    }
+                  })}
                   className={`relative p-6 border-2 rounded-lg text-left transition-all ${
                     formData.optionMode === 'hybrid'
                       ? 'border-purple-500 bg-purple-50'
@@ -462,18 +512,18 @@ export default function CreateEventPage() {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="threshold">Selection Method *</Label>
-                    <Select 
-                      value={formData.thresholdMode} 
+                    <Select
+                      value={formData.thresholdMode}
                       onValueChange={(value) => updateFormData({ thresholdMode: value })}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger data-testid="selection-method-dropdown">
                         <SelectValue placeholder="Choose selection method..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="top_n">Top N - Select top ranked options</SelectItem>
-                        <SelectItem value="percentage">Percentage - Options above % of max votes</SelectItem>
-                        <SelectItem value="absolute_votes">Absolute - Options above vote threshold</SelectItem>
-                        <SelectItem value="above_average">Above Average - Options above mean</SelectItem>
+                        <SelectItem value="top_n" data-testid="selection-method-top-n">Top N - Select top ranked options</SelectItem>
+                        <SelectItem value="percentage" data-testid="selection-method-percentage">Percentage - Options above % of max votes</SelectItem>
+                        <SelectItem value="absolute_votes" data-testid="selection-method-absolute">Absolute - Options above vote threshold</SelectItem>
+                        <SelectItem value="above_average" data-testid="selection-method-above-average">Above Average - Options above mean</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -601,16 +651,23 @@ export default function CreateEventPage() {
                 <Button variant="outline" onClick={() => setCurrentStep(3)}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
-                <Button onClick={() => setCurrentStep(5)} disabled={!canProceed(4)}>
-                  {formData.optionMode === 'admin_defined' ? 'Next: Add Options' : 'Create Event'} <ArrowRight className="ml-2 h-4 w-4" />
+                <Button
+                  onClick={() => (formData.optionMode === 'admin_defined' || formData.optionMode === 'hybrid') ? setCurrentStep(5) : setCurrentStep(6)}
+                  disabled={!canProceed(4)}
+                >
+                  {(formData.optionMode === 'admin_defined' || formData.optionMode === 'hybrid') ? (
+                    <>Next: Add Options <ArrowRight className="ml-2 h-4 w-4" /></>
+                  ) : (
+                    <>Next: Vote Settings <ArrowRight className="ml-2 h-4 w-4" /></>
+                  )}
                 </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Step 5: Options (only for admin_defined mode) */}
-        {currentStep === 5 && formData.optionMode === 'admin_defined' && (
+        {/* Step 5: Options (for admin_defined and hybrid modes) */}
+        {currentStep === 5 && (formData.optionMode === 'admin_defined' || formData.optionMode === 'hybrid') && (
           <Card>
             <CardHeader>
               <CardTitle>Voting Options</CardTitle>
@@ -660,8 +717,184 @@ export default function CreateEventPage() {
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
                 <Button
+                  onClick={() => setCurrentStep(6)}
+                  disabled={!canProceed(5)}
+                >
+                  Next: Vote Settings <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 6: Vote Settings */}
+        {currentStep === 6 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings2 className="w-5 h-5" />
+                Vote Settings
+              </CardTitle>
+              <CardDescription>Configure how voting works for your event</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Allow Vote Changes */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="allowVoteChanges" className="text-base font-medium">
+                    Allow Vote Changes
+                  </Label>
+                  <p className="text-sm text-gray-600">
+                    Let voters modify their votes after submission
+                  </p>
+                </div>
+                <Switch
+                  id="allowVoteChanges"
+                  checked={formData.voteSettings?.allowVoteChanges || false}
+                  onCheckedChange={(checked) =>
+                    updateFormData({
+                      voteSettings: {
+                        ...formData.voteSettings!,
+                        allowVoteChanges: checked
+                      }
+                    })
+                  }
+                />
+              </div>
+
+              {/* Allow Late Submissions */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="allowLateSubmissions" className="text-base font-medium">
+                    Allow Late Submissions
+                  </Label>
+                  <p className="text-sm text-gray-600">
+                    Accept votes after the end time
+                  </p>
+                </div>
+                <Switch
+                  id="allowLateSubmissions"
+                  checked={formData.voteSettings?.allowLateSubmissions || false}
+                  onCheckedChange={(checked) =>
+                    updateFormData({
+                      voteSettings: {
+                        ...formData.voteSettings!,
+                        allowLateSubmissions: checked
+                      }
+                    })
+                  }
+                />
+              </div>
+
+              {/* Show Live Results */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="showLiveResults" className="text-base font-medium">
+                    Show Live Results
+                  </Label>
+                  <p className="text-sm text-gray-600">
+                    Display results in real-time during voting
+                  </p>
+                </div>
+                <Switch
+                  id="showLiveResults"
+                  checked={formData.voteSettings?.showLiveResults || false}
+                  onCheckedChange={(checked) =>
+                    updateFormData({
+                      voteSettings: {
+                        ...formData.voteSettings!,
+                        showLiveResults: checked
+                      }
+                    })
+                  }
+                />
+              </div>
+
+              {/* Require Email Verification */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="requireEmailVerification" className="text-base font-medium">
+                    Require Email Verification
+                  </Label>
+                  <p className="text-sm text-gray-600">
+                    Voters must verify their email before voting
+                  </p>
+                </div>
+                <Switch
+                  id="requireEmailVerification"
+                  checked={formData.voteSettings?.requireEmailVerification || false}
+                  onCheckedChange={(checked) =>
+                    updateFormData({
+                      voteSettings: {
+                        ...formData.voteSettings!,
+                        requireEmailVerification: checked
+                      }
+                    })
+                  }
+                />
+              </div>
+
+              {/* Allow Anonymous Participation */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="allowAnonymous" className="text-base font-medium">
+                    Allow Anonymous Participation
+                  </Label>
+                  <p className="text-sm text-gray-600">
+                    Allow voters to participate without invite codes for public events
+                  </p>
+                </div>
+                <Switch
+                  id="allowAnonymous"
+                  checked={formData.voteSettings?.allowAnonymous || false}
+                  onCheckedChange={(checked) =>
+                    updateFormData({
+                      voteSettings: {
+                        ...formData.voteSettings!,
+                        allowAnonymous: checked
+                      }
+                    })
+                  }
+                />
+              </div>
+
+              {/* Proposal Moderation (only show for community_proposals or hybrid) */}
+              {(formData.optionMode === 'community_proposals' || formData.optionMode === 'hybrid') && (
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="requireModeration" className="text-base font-medium">
+                      Require Proposal Moderation
+                    </Label>
+                    <p className="text-sm text-gray-600">
+                      All proposals must be manually approved before voting
+                    </p>
+                  </div>
+                  <Switch
+                    id="requireModeration"
+                    checked={formData.voteSettings?.requireModeration || false}
+                    onCheckedChange={(checked) =>
+                      updateFormData({
+                        voteSettings: {
+                          ...formData.voteSettings!,
+                          requireModeration: checked
+                        },
+                        proposalConfig: {
+                          ...formData.proposalConfig!,
+                          moderationMode: checked ? 'pre_approval' : 'none'
+                        }
+                      })
+                    }
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-between pt-4">
+                <Button variant="outline" onClick={() => setCurrentStep(formData.optionMode === 'admin_defined' || formData.optionMode === 'hybrid' ? 5 : 4)}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back
+                </Button>
+                <Button
                   onClick={handleSubmit}
-                  disabled={!canProceed(5) || isSubmitting}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Creating...' : 'Create Event'}
                   <Check className="ml-2 h-4 w-4" />
@@ -670,8 +903,9 @@ export default function CreateEventPage() {
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

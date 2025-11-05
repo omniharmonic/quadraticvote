@@ -33,6 +33,7 @@ export default function ProposalSubmissionPage() {
     imageUrl: '',
     submitterEmail: '',
     submitterWallet: '',
+    payoutWallet: '',
     inviteCode: inviteCode || ''
   });
 
@@ -107,39 +108,43 @@ export default function ProposalSubmissionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <>
         <Navigation />
-        <div className="container mx-auto py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-            <p className="text-gray-600">Loading proposal submission...</p>
+        <div className="min-h-screen bg-gray-50">
+          <div className="container mx-auto py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+              <p className="text-gray-600">Loading proposal submission...</p>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <>
         <Navigation />
-        <div className="container mx-auto py-8">
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader className="text-center">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <CardTitle>Event Not Found</CardTitle>
-              <CardDescription>
-                The event was not found or does not accept community proposals.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <Button onClick={() => router.push('/')} variant="outline">
-                Back to Home
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="min-h-screen bg-gray-50">
+          <div className="container mx-auto py-8">
+            <Card className="max-w-2xl mx-auto">
+              <CardHeader className="text-center">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <CardTitle>Event Not Found</CardTitle>
+                <CardDescription>
+                  The event was not found or does not accept community proposals.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <Button onClick={() => router.push('/')} variant="outline">
+                  Back to Home
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -196,11 +201,13 @@ export default function ProposalSubmissionPage() {
         </div>
       </div>
     );
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
+  }
 
-      <div className="container mx-auto py-8">
+  return (
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto py-8">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <div className="mb-8">
@@ -240,7 +247,8 @@ export default function ProposalSubmissionPage() {
 
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <strong>Proposal Guidelines:</strong> Proposals may require moderation before appearing as voting options.
+                    <strong>Proposal Guidelines:</strong> Anyone can submit proposals for community consideration.
+                    Proposals may require moderation before appearing as voting options.
                     Make sure your proposal is clear, relevant, and follows community guidelines.
                   </p>
                 </div>
@@ -316,9 +324,9 @@ export default function ProposalSubmissionPage() {
 
                 {/* Submitter Info */}
                 <div className="border-t pt-6">
-                  <h3 className="font-medium text-gray-900 mb-4">Contact Information</h3>
+                  <h3 className="font-medium text-gray-900 mb-4">Contact & Payout Information</h3>
 
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="submitterEmail">Email Address *</Label>
                       <Input
@@ -335,18 +343,34 @@ export default function ProposalSubmissionPage() {
                       </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="submitterWallet">Wallet Address (optional)</Label>
-                      <Input
-                        id="submitterWallet"
-                        name="submitterWallet"
-                        value={formData.submitterWallet}
-                        onChange={(e) => handleChange('submitterWallet', e.target.value)}
-                        placeholder="0x..."
-                      />
-                      <p className="text-sm text-gray-500">
-                        For token-gated events
-                      </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="submitterWallet">Contact Wallet Address (optional)</Label>
+                        <Input
+                          id="submitterWallet"
+                          name="submitterWallet"
+                          value={formData.submitterWallet}
+                          onChange={(e) => handleChange('submitterWallet', e.target.value)}
+                          placeholder="0x... or name.eth"
+                        />
+                        <p className="text-sm text-gray-500">
+                          For token-gated events or verification
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="payoutWallet">Payout Wallet Address (optional)</Label>
+                        <Input
+                          id="payoutWallet"
+                          name="payoutWallet"
+                          value={formData.payoutWallet}
+                          onChange={(e) => handleChange('payoutWallet', e.target.value)}
+                          placeholder="0x... or name.eth"
+                        />
+                        <p className="text-sm text-gray-500">
+                          Where payments should be sent if proposal wins
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -354,16 +378,16 @@ export default function ProposalSubmissionPage() {
                 {/* Invite Code */}
                 {!inviteCode && (
                   <div className="space-y-2">
-                    <Label htmlFor="inviteCode">Invite Code (if required)</Label>
+                    <Label htmlFor="inviteCode">Invite Code (optional)</Label>
                     <Input
                       id="inviteCode"
                       name="inviteCode"
                       value={formData.inviteCode}
                       onChange={(e) => handleChange('inviteCode', e.target.value)}
-                      placeholder="Enter invite code if required"
+                      placeholder="Optional - only needed for restricted events"
                     />
                     <p className="text-sm text-gray-500">
-                      Some events require an invite code to submit proposals
+                      Most events allow public proposal submission. Only enter a code if specifically required.
                     </p>
                   </div>
                 )}
@@ -423,7 +447,8 @@ export default function ProposalSubmissionPage() {
             </CardContent>
           </Card>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

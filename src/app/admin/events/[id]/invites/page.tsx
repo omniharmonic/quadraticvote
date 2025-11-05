@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useAdmin } from '@/contexts/AdminContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,7 +44,20 @@ interface Invite {
 export default function InviteManagementPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { getAdminCode, setAdminCode } = useAdmin();
   const eventId = params.id as string;
+
+  // Try to get admin code from URL params first, then from context
+  const adminCodeParam = searchParams.get('code');
+  const adminCode = adminCodeParam || getAdminCode(eventId);
+
+  // Store admin code if provided in URL
+  useEffect(() => {
+    if (adminCodeParam) {
+      setAdminCode(adminCodeParam);
+    }
+  }, [adminCodeParam, setAdminCode]);
 
   const [event, setEvent] = useState<any>(null);
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -73,28 +87,40 @@ export default function InviteManagementPage() {
 
   const fetchEventAndInvites = async () => {
     try {
+      if (!adminCode) {
+        toast({
+          title: 'Access Required',
+          description: 'Please access this page from the admin dashboard with proper authorization.',
+          variant: 'destructive',
+        });
+        router.push('/');
+        return;
+      }
+
       // Fetch event details
       const eventResponse = await fetch(`/api/events/${eventId}`);
       const eventData = await eventResponse.json();
 
-      // Fetch invites
-      const invitesResponse = await fetch(`/api/events/${eventId}/invites`);
+      // Fetch invites with admin code
+      const invitesResponse = await fetch(`/api/events/${eventId}/invites?code=${adminCode}`);
       const invitesData = await invitesResponse.json();
 
       if (eventData.success && invitesData.success) {
         setEvent(eventData.event);
-        setInvites(invitesData.invites || []);
+        setInvites(Array.isArray(invitesData.invites) ? invitesData.invites : []);
       } else {
+        const errorMessage = eventData.error || invitesData.error || 'Failed to load event and invites';
         toast({
           title: 'Error',
-          description: 'Failed to load event and invites',
+          description: errorMessage,
           variant: 'destructive',
         });
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load data';
       toast({
         title: 'Error',
-        description: 'Failed to load data',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -107,7 +133,7 @@ export default function InviteManagementPage() {
     setIsCreating(true);
 
     try {
-      const response = await fetch(`/api/events/${eventId}/invites`, {
+      const response = await fetch(`/api/events/${eventId}/invites?code=${adminCode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(singleForm),
@@ -162,7 +188,7 @@ export default function InviteManagementPage() {
 
       // Create invites for each email
       const createPromises = emailList.map(email =>
-        fetch(`/api/events/${eventId}/invites`, {
+        fetch(`/api/events/${eventId}/invites?code=${adminCode}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -230,9 +256,9 @@ export default function InviteManagementPage() {
   };
 
   const getInviteStatus = (invite: Invite) => {
-    if (invite.voteSubmittedAt) {
+    if (invite?.voteSubmittedAt) {
       return <Badge variant="default" className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Voted</Badge>;
-    } else if (invite.usedAt) {
+    } else if (invite?.usedAt) {
       return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Opened</Badge>;
     } else {
       return <Badge variant="outline"><Mail className="w-3 h-3 mr-1" />Sent</Badge>;
@@ -253,10 +279,10 @@ export default function InviteManagementPage() {
   };
 
   const stats = {
-    total: invites.length,
-    sent: invites.length,
-    opened: invites.filter(i => i.usedAt).length,
-    voted: invites.filter(i => i.voteSubmittedAt).length,
+    total: invites?.length || 0,
+    sent: invites?.length || 0,
+    opened: invites?.filter(i => i?.usedAt).length || 0,
+    voted: invites?.filter(i => i?.voteSubmittedAt).length || 0,
   };
 
   if (loading || !event) {
@@ -501,7 +527,12 @@ export default function InviteManagementPage() {
                   <p className="text-gray-600 mb-4">
                     Create your first invite to get started with participant recruitment.
                   </p>
-                  <Button onClick={() => document.querySelector('[value="create"]')?.click()}>
+                  <Button onClick={() => {
+                    const createTab = document.querySelector('[data-value="create"]') as HTMLElement;
+                    if (createTab) {
+                      createTab.click();
+                    }
+                  }}>
                     Create First Invite
                   </Button>
                 </CardContent>

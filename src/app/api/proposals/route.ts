@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { proposalService } from '@/lib/services/proposal.service';
-import { submitProposalSchema } from '@/lib/validators';
+import { submitProposalSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 import { redisKeys } from '@/lib/redis/client';
 
@@ -28,9 +28,12 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json();
+    console.log('Proposal submission request body:', JSON.stringify(body, null, 2));
+
     const validationResult = submitProposalSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.log('Proposal validation failed:', validationResult.error.format());
       return NextResponse.json(
         {
           error: 'Validation failed',
@@ -39,6 +42,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    console.log('Proposal validated data:', JSON.stringify(validationResult.data, null, 2));
 
     // Submit proposal
     const proposal = await proposalService.submitProposal(validationResult.data);

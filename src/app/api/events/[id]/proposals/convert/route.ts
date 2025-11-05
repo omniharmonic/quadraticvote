@@ -2,27 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { proposalService } from '@/lib/services/proposal.service';
 
 /**
- * POST /api/events/:id/proposals/convert
- * Convert approved proposals to voting options
- * Admin only endpoint
+ * POST /api/events/[id]/proposals/convert
+ * Convert all approved proposals to voting options for an event
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const converted = await proposalService.convertProposalsToOptions(params.id);
+    const eventId = params.id;
+
+    if (!eventId) {
+      return NextResponse.json(
+        { success: false, error: 'Event ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Convert approved proposals to options
+    const convertedCount = await proposalService.convertProposalsToOptions(eventId);
 
     return NextResponse.json({
       success: true,
-      converted,
-      message: `${converted} proposals converted to voting options`,
+      message: `Successfully converted ${convertedCount} proposals to voting options`,
+      convertedCount
     });
+
   } catch (error) {
-    console.error('Proposal conversion error:', error);
-    
+    console.error('Error converting proposals:', error);
+
     return NextResponse.json(
       {
+        success: false,
         error: 'Failed to convert proposals',
         message: error instanceof Error ? error.message : 'Unknown error',
       },
@@ -30,4 +41,3 @@ export async function POST(
     );
   }
 }
-

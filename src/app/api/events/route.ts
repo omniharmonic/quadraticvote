@@ -10,27 +10,35 @@ import { redisKeys } from '@/lib/redis/client';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting
-    const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    const rateLimitKey = redisKeys.rateLimit('event_creation', ip);
-    const { allowed } = await checkRateLimit(
-      rateLimitKey,
-      RATE_LIMITS.API_GENERAL.limit,
-      RATE_LIMITS.API_GENERAL.window
-    );
-
-    if (!allowed) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded. Please try again later.' },
-        { status: 429 }
+    // Rate limiting - temporarily disabled for debugging
+    try {
+      const ip = request.headers.get('x-forwarded-for') || 'unknown';
+      const rateLimitKey = redisKeys.rateLimit('event_creation', ip);
+      const { allowed } = await checkRateLimit(
+        rateLimitKey,
+        RATE_LIMITS.API_GENERAL.limit,
+        RATE_LIMITS.API_GENERAL.window
       );
+
+      if (!allowed) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded. Please try again later.' },
+          { status: 429 }
+        );
+      }
+    } catch (rateLimitError) {
+      console.warn('Rate limiting failed, proceeding without rate limit:', rateLimitError);
+      // Continue without rate limiting if Redis is unavailable
     }
 
     // Parse and validate request body
     const body = await request.json();
+    console.log('Event creation request body:', JSON.stringify(body, null, 2));
+
     const validationResult = createEventSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.log('Validation failed:', validationResult.error.format());
       return NextResponse.json(
         {
           error: 'Validation failed',
@@ -40,8 +48,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create event
-    const event = await eventService.createEvent(validationResult.data);
+    console.log('Validated data:', JSON.stringify(validationResult.data, null, 2));
+    console.log('DEBUG: proposalConfig in validated data:', validationResult.data.proposalConfig);
+    console.log('DEBUG: initialOptions in validated data:', validationResult.data.initialOptions);
+
+    // Create event with fallback for visibility and proposalConfig
+    const eventData = {
+      ...validationResult.data,
+      visibility: validationResult.data.visibility || 'public', // Fallback to public if missing
+      proposalConfig: validationResult.data.proposalConfig || (
+        validationResult.data.optionMode === 'community_proposals' ? {
+          enabled: true,
+          submissionStart: validationResult.data.startTime,
+          submissionEnd: validationResult.data.endTime,
+          moderation_mode: 'none',
+          access_control: 'open'
+        } : null
+      ),
+      // Restore missing fields from original body
+      initialOptions: validationResult.data.initialOptions || body.initialOptions,
+      voteSettings: {
+        ...validationResult.data.voteSettings,
+        allowAnonymous: validationResult.data.voteSettings?.allowAnonymous ?? body.voteSettings?.allowAnonymous
+      }
+    };
+
+    const event = await eventService.createEvent(eventData);
 
     // Return success response
     return NextResponse.json(

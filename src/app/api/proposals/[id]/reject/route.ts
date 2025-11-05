@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { proposalService } from '@/lib/services/proposal.service';
 
-export async function PATCH(
+async function handleRejection(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -35,4 +35,18 @@ export async function PATCH(
       { status: 500 }
     );
   }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return handleRejection(request, { params });
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  return handleRejection(request, { params });
 }

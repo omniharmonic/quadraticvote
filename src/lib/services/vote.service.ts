@@ -17,25 +17,37 @@ export class VoteService {
   ): Promise<Vote> {
     // 1. Validate invite code
     const invite = await this.validateInviteCode(eventId, inviteCode);
-    
+
     // 2. Validate event is active
     const eventResults = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
     const event = eventResults[0];
-    
+
     if (!event) throw new Error('Event not found');
     if (!this.isVotingOpen(event)) throw new Error('Voting is closed');
-    
+
     // 3. Validate credit allocation
     await this.validateAllocations(event, allocations);
-    
+
     // 4. Calculate total credits used
     const totalCredits = getTotalCredits(allocations);
-    
-    // 5. Insert or update vote
+
+    // 5. Handle anonymous voting for public events
+    let finalInviteCode = inviteCode;
+    if (invite.isVirtual && inviteCode === 'anonymous') {
+      // Generate a unique identifier for anonymous voters based on IP + User Agent
+      const crypto = require('crypto');
+      const identifier = crypto.createHash('sha256')
+        .update(`${metadata?.ipAddress || 'unknown'}-${metadata?.userAgent || 'unknown'}-${eventId}`)
+        .digest('hex')
+        .substring(0, 32);
+      finalInviteCode = `anon_${identifier}`;
+    }
+
+    // 6. Insert or update vote
     const [vote] = await db.insert(votes)
       .values({
         eventId: eventId,
-        inviteCode: inviteCode,
+        inviteCode: finalInviteCode,
         allocations: allocations as any,
         totalCreditsUsed: totalCredits,
         ipAddress: metadata?.ipAddress,
@@ -51,13 +63,15 @@ export class VoteService {
       })
       .returning();
     
-    // 6. Update invite tracking
-    await db.update(invites)
-      .set({ 
-        voteSubmittedAt: new Date(),
-        usedAt: new Date(),
-      })
-      .where(eq(invites.code, inviteCode));
+    // 6. Update invite tracking (skip for virtual invites)
+    if (!invite.isVirtual) {
+      await db.update(invites)
+        .set({
+          voteSubmittedAt: new Date(),
+          usedAt: new Date(),
+        })
+        .where(eq(invites.code, inviteCode));
+    }
     
     // 7. Invalidate cached results
     await redis.del(redisKeys.results(eventId));
@@ -74,6 +88,7 @@ export class VoteService {
    * Validate invite code for this event
    */
   private async validateInviteCode(eventId: string, code: string): Promise<any> {
+    // First, check if a specific invite code exists
     const inviteResults = await db.select().from(invites).where(
       and(
         eq(invites.eventId, eventId),
@@ -81,13 +96,34 @@ export class VoteService {
       )
     ).limit(1);
     const invite = inviteResults[0];
-    
-    if (!invite) throw new Error('Invalid invite code');
-    if (invite.inviteType === 'proposal_submission') {
-      throw new Error('This code is only for proposal submission');
+
+    if (invite) {
+      if (invite.inviteType === 'proposal_submission') {
+        throw new Error('This code is only for proposal submission');
+      }
+      return invite;
     }
-    
-    return invite;
+
+    // If no specific invite found, check if this is a public event
+    const eventResults = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
+    const event = eventResults[0];
+
+    if (!event) throw new Error('Event not found');
+
+    // For public events, allow voting without specific invite codes
+    if (event.visibility === 'public') {
+      // Create a virtual invite for tracking purposes
+      return {
+        eventId: eventId,
+        code: code,
+        inviteType: 'voting',
+        createdAt: new Date(),
+        isVirtual: true // Flag to indicate this is not a real database invite
+      };
+    }
+
+    // For private events, invite code is required
+    throw new Error('Invalid invite code');
   }
   
   /**

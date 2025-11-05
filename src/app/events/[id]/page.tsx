@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Calendar, Users, Trophy, Sparkles, ArrowRight } from 'lucide-react';
 import type { Event } from '@/lib/types';
+import Navigation from '@/components/layout/navigation';
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -92,8 +93,10 @@ export default function EventDetailPage() {
   const isBinary = framework.framework_type === 'binary_selection';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+    <>
+      <Navigation eventId={params.id as string} eventTitle={event.title} showAdminNav={true} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
@@ -267,8 +270,9 @@ export default function EventDetailPage() {
             View Results
           </Button>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
