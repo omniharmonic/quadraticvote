@@ -1,5 +1,3 @@
-import { redis } from '@/lib/redis/client';
-
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
@@ -8,29 +6,16 @@ export interface RateLimitResult {
 
 /**
  * Check rate limit for a key
+ * Simplified version without Redis - just allows all requests for now
  */
 export async function checkRateLimit(
   key: string,
   limit: number,
   window: number // seconds
 ): Promise<RateLimitResult> {
-  try {
-    const count = await redis.incr(key);
-    
-    if (count === 1) {
-      await redis.expire(key, window);
-    }
-    
-    if (count > limit) {
-      return { allowed: false, remaining: 0 };
-    }
-    
-    return { allowed: true, remaining: limit - count };
-  } catch (error) {
-    console.error('Rate limit check failed:', error);
-    // Fail open - allow request if Redis is unavailable
-    return { allowed: true, remaining: limit };
-  }
+  // For now, just allow all requests to avoid Redis dependency
+  // In production, you could implement rate limiting using Supabase or in-memory
+  return { allowed: true, remaining: limit };
 }
 
 /**

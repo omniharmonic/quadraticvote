@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eventService } from '@/lib/services/event.service';
 import { createEventSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
-import { redisKeys } from '@/lib/redis/client';
 
 /**
  * POST /api/events
@@ -13,7 +12,7 @@ export async function POST(request: NextRequest) {
     // Rate limiting - temporarily disabled for debugging
     try {
       const ip = request.headers.get('x-forwarded-for') || 'unknown';
-      const rateLimitKey = redisKeys.rateLimit('event_creation', ip);
+      const rateLimitKey = `ratelimit:event_creation:${ip}`;
       const { allowed } = await checkRateLimit(
         rateLimitKey,
         RATE_LIMITS.API_GENERAL.limit,

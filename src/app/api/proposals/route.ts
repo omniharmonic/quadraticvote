@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { proposalService } from '@/lib/services/proposal.service';
 import { submitProposalSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
-import { redisKeys } from '@/lib/redis/client';
 
 /**
  * POST /api/proposals
@@ -12,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limiting
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
-    const rateLimitKey = redisKeys.rateLimit('proposal', ip);
+    const rateLimitKey = `ratelimit:proposal:${ip}`;
     const { allowed } = await checkRateLimit(
       rateLimitKey,
       RATE_LIMITS.PROPOSAL_SUBMISSION.limit,

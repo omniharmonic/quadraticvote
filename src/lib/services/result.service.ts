@@ -1,7 +1,6 @@
 import { db } from '@/lib/db/client';
 import { events, votes, options } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
-import { redis, redisKeys } from '@/lib/redis/client';
 import { aggregateVotes } from '@/lib/utils/quadratic';
 import type {
   EventResults,
@@ -17,38 +16,12 @@ import type {
 
 export class ResultService {
   /**
-   * Get results for an event (with caching)
+   * Get results for an event (caching disabled since Redis was removed)
    */
   async getResults(eventId: string): Promise<EventResults> {
-    // 1. Check cache
-    try {
-      const cached = await redis.get(redisKeys.results(eventId));
-      if (cached) {
-        return JSON.parse(cached);
-      }
-    } catch (error) {
-      console.error('Cache retrieval failed:', error);
-    }
-    
-    // 2. Calculate fresh results
+    // Note: Redis caching disabled - calculating fresh results every time
     const results = await this.calculateResults(eventId);
-    
-    // 3. Cache results
-    try {
-      const event = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
-      
-      if (event.length > 0) {
-        const ttl = this.isEventClosed(event[0]) ? 0 : 300; // 5 min TTL during voting, no expiry after
-        if (ttl > 0) {
-          await redis.setex(redisKeys.results(eventId), ttl, JSON.stringify(results));
-        } else {
-          await redis.set(redisKeys.results(eventId), JSON.stringify(results));
-        }
-      }
-    } catch (error) {
-      console.error('Cache storage failed:', error);
-    }
-    
+
     return results;
   }
   
@@ -301,14 +274,11 @@ export class ResultService {
   }
   
   /**
-   * Invalidate results cache (called when new vote submitted)
+   * Cache invalidation disabled since Redis was removed
    */
   async invalidateCache(eventId: string): Promise<void> {
-    try {
-      await redis.del(redisKeys.results(eventId));
-    } catch (error) {
-      console.error('Cache invalidation failed:', error);
-    }
+    // Note: Cache invalidation disabled since Redis was removed
+    // Results are now calculated fresh on each request
   }
 }
 

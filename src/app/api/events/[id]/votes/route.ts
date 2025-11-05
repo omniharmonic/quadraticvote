@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { voteService } from '@/lib/services/vote.service';
 import { submitVoteSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
-import { redisKeys } from '@/lib/redis/client';
 
 /**
  * POST /api/events/:id/votes
@@ -16,7 +15,7 @@ export async function POST(
     // Rate limiting - with graceful degradation
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
     try {
-      const rateLimitKey = redisKeys.rateLimit('vote', ip);
+      const rateLimitKey = `ratelimit:vote:${ip}`;
       const { allowed } = await checkRateLimit(
         rateLimitKey,
         RATE_LIMITS.VOTE_SUBMISSION.limit,

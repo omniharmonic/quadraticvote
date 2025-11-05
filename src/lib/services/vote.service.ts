@@ -1,7 +1,6 @@
 import { db } from '@/lib/db/client';
 import { votes, invites, events, options } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { redis, redisKeys } from '@/lib/redis/client';
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
 import type { Vote } from '@/lib/types';
 
@@ -73,13 +72,11 @@ export class VoteService {
         .where(eq(invites.code, inviteCode));
     }
     
-    // 7. Invalidate cached results
-    await redis.del(redisKeys.results(eventId));
-    
-    // 8. Update live aggregation (if real-time enabled)
-    if (event.showResultsDuringVoting) {
-      await this.updateLiveAggregation(eventId, allocations);
-    }
+    // 7. Skip cache invalidation (Redis removed)
+    // Note: Results cache invalidation disabled since Redis was removed
+
+    // 8. Skip live aggregation (Redis removed)
+    // Note: Live aggregation disabled since Redis was removed
     
     return vote as Vote;
   }
@@ -167,27 +164,7 @@ export class VoteService {
     }
   }
   
-  /**
-   * Update live vote aggregation in Redis
-   */
-  private async updateLiveAggregation(
-    eventId: string,
-    allocations: Record<string, number>
-  ): Promise<void> {
-    try {
-      // Calculate quadratic votes
-      const quadraticVotes = calculateQuadraticVotes(allocations);
-      
-      // Update Redis hash
-      const key = redisKeys.votesLive(eventId);
-      for (const [optionId, voteValue] of Object.entries(quadraticVotes)) {
-        await redis.hincrbyfloat(key, optionId, voteValue);
-      }
-    } catch (error) {
-      console.error('Failed to update live aggregation:', error);
-      // Don't fail the vote submission if Redis update fails
-    }
-  }
+  // Note: updateLiveAggregation method removed since Redis was removed
   
   /**
    * Get voter's current allocation
