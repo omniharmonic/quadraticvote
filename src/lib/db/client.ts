@@ -18,6 +18,7 @@ const client = postgres(connectionString, {
   idle_timeout: 20,
   connect_timeout: 10,
   debug: false, // Set to true if you want to see SQL queries
+  ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
 });
 
 export const db = drizzle(client, { schema });
