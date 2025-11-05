@@ -8,6 +8,12 @@ import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
  * Create a new event
  */
 export async function POST(request: NextRequest) {
+  console.log('=== EVENT CREATION API CALLED ===');
+  console.log('Environment check:', {
+    DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Missing',
+    NODE_ENV: process.env.NODE_ENV,
+  });
+
   try {
     // Rate limiting - temporarily disabled for debugging
     try {
@@ -70,7 +76,9 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    console.log('About to call eventService.createEvent with:', JSON.stringify(eventData, null, 2));
     const event = await eventService.createEvent(eventData);
+    console.log('Event created successfully:', event.id);
 
     // Return success response
     return NextResponse.json(
@@ -84,12 +92,18 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Event creation error:', error);
-    
+    console.error('=== EVENT CREATION ERROR ===');
+    console.error('Error type:', typeof error);
+    console.error('Error name:', error instanceof Error ? error.name : 'Unknown');
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('Full error object:', error);
+
     return NextResponse.json(
       {
         error: 'Failed to create event',
         message: error instanceof Error ? error.message : 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 }
     );
