@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
+import { sql } from 'drizzle-orm';
 
 /**
  * Simple database connection test endpoint
@@ -14,12 +15,12 @@ export async function GET(request: NextRequest) {
   try {
     // Test 1: Simple raw SQL query
     console.log('Testing basic SQL query...');
-    const result = await db.execute(`SELECT 1 as test`);
+    const result = await db.execute(sql`SELECT 1 as test`);
     console.log('Basic SQL result:', result);
 
     // Test 2: Check if events table exists
     console.log('Checking if events table exists...');
-    const tableCheck = await db.execute(`
+    const tableCheck = await db.execute(sql`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Test 3: List all tables
     console.log('Listing all tables...');
-    const allTables = await db.execute(`
+    const allTables = await db.execute(sql`
       SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'

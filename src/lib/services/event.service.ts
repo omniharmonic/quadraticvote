@@ -184,13 +184,13 @@ export class EventService {
    */
   async getActiveEvents(): Promise<Event[]> {
     const now = new Date();
-    const result = await db.query.events.findMany({
-      where: and(
+    const result = await db.select().from(events).where(
+      and(
         isNull(events.deletedAt),
         eq(events.visibility, 'public')
-      ),
-    });
-    
+      )
+    );
+
     return result as Event[];
   }
 }
