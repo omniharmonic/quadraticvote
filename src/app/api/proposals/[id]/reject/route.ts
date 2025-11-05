@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force this route to be dynamic (not pre-rendered during build)
+export const dynamic = 'force-dynamic';
+
 import { proposalService } from '@/lib/services/proposal.service';
 
 async function handleRejection(

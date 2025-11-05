@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force this route to be dynamic (not pre-rendered during build)
+export const dynamic = 'force-dynamic';
+
 import { proposalService } from '@/lib/services/proposal.service';
 import { submitProposalSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';

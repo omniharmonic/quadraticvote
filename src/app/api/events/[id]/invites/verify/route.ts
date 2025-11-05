@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Force this route to be dynamic (not pre-rendered during build)
+export const dynamic = 'force-dynamic';
+
 import { db } from '@/lib/db/client';
 import { invites, events } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
