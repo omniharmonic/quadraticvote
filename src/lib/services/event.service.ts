@@ -166,10 +166,34 @@ export class EventService {
       .eq('event_id', eventId)
       .order('position', { ascending: true });
 
-    return {
-      ...event,
+    // Map snake_case database fields to camelCase frontend fields
+    const mappedEvent = {
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      tags: event.tags,
+      imageUrl: event.image_url,
+      visibility: event.visibility,
+      startTime: event.start_time,
+      endTime: event.end_time,
+      timezone: event.timezone,
+      decisionFramework: event.decision_framework,
+      optionMode: event.option_mode,
+      proposalConfig: event.proposal_config,
+      creditsPerVoter: event.credits_per_voter,
+      weightingMode: event.weighting_mode,
+      weightingConfig: event.weighting_config,
+      tokenGating: event.token_gating,
+      showResultsDuringVoting: event.show_results_during_voting,
+      showResultsAfterClose: event.show_results_after_close,
+      createdBy: event.created_by,
+      adminCode: event.admin_code, // This might be undefined if column doesn't exist
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
       options: eventOptions || []
-    } as any;
+    };
+
+    return mappedEvent as any;
   }
   
   /**
@@ -207,7 +231,33 @@ export class EventService {
       throw new Error(`Failed to fetch events: ${error.message}`);
     }
 
-    return (result || []) as Event[];
+    // Map snake_case database fields to camelCase frontend fields
+    const mappedEvents = (result || []).map(event => ({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      tags: event.tags,
+      imageUrl: event.image_url,
+      visibility: event.visibility,
+      startTime: event.start_time,
+      endTime: event.end_time,
+      timezone: event.timezone,
+      decisionFramework: event.decision_framework,
+      optionMode: event.option_mode,
+      proposalConfig: event.proposal_config,
+      creditsPerVoter: event.credits_per_voter,
+      weightingMode: event.weighting_mode,
+      weightingConfig: event.weighting_config,
+      tokenGating: event.token_gating,
+      showResultsDuringVoting: event.show_results_during_voting,
+      showResultsAfterClose: event.show_results_after_close,
+      createdBy: event.created_by,
+      adminCode: event.admin_code,
+      createdAt: event.created_at,
+      updatedAt: event.updated_at,
+    }));
+
+    return mappedEvents as Event[];
   }
 }
 
