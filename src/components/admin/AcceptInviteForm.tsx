@@ -115,7 +115,7 @@ export function AcceptInviteForm({ inviteCode: initialCode }: AcceptInviteFormPr
 
         <button
           type="submit"
-          disabled={isAccepting || !inviteCode.trim() || success}
+          disabled={isAccepting || !inviteCode.trim() || !!success}
           className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isAccepting ? 'Accepting...' : 'Accept Invitation'}
