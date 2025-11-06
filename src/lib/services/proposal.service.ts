@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/client';
+import { db } from '@/lib/db/supabase-client';
 import { proposals, events, invites, options } from '@/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { hashString } from '@/lib/utils/auth';

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
-import { db } from '@/lib/db/client';
+import { db } from '@/lib/db/supabase-client';
 import { events, votes, proposals, invites, options } from '@/lib/db/schema';
 import { eq, count, avg, max, min, sql } from 'drizzle-orm';
 

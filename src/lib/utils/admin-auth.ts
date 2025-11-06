@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/client';
+import { db } from '@/lib/db/supabase-client';
 import { events } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 

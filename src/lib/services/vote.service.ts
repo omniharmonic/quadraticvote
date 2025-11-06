@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/client';
+import { db } from '@/lib/db/supabase-client';
 import { votes, invites, events, options } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
