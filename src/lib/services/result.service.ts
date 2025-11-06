@@ -1,6 +1,4 @@
-import { db } from '@/lib/db/supabase-client';
-import { events, votes, options } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { supabase } from '@/lib/db/supabase-client';
 import { aggregateVotes } from '@/lib/utils/quadratic';
 import type {
   EventResults,

@@ -1,22 +1,19 @@
-import { db } from '@/lib/db/supabase-client';
-import { events } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { supabase } from '@/lib/db/supabase-client';
 
 /**
  * Verify admin code for an event
  */
 export async function verifyAdminCode(eventId: string, adminCode: string): Promise<boolean> {
   try {
-    const eventResults = await db.select()
-      .from(events)
-      .where(eq(events.id, eventId))
-      .limit(1);
+    const { data: event, error } = await supabase
+      .from('events')
+      .select('admin_code')
+      .eq('id', eventId)
+      .single();
 
-    const event = eventResults[0];
+    if (error || !event) return false;
 
-    if (!event) return false;
-
-    return event.adminCode === adminCode;
+    return event.admin_code === adminCode;
   } catch (error) {
     console.error('Error verifying admin code:', error);
     return false;
@@ -28,12 +25,13 @@ export async function verifyAdminCode(eventId: string, adminCode: string): Promi
  */
 export async function getEventByAdminCode(adminCode: string): Promise<any | null> {
   try {
-    const eventResults = await db.select()
-      .from(events)
-      .where(eq(events.adminCode, adminCode))
-      .limit(1);
+    const { data: event, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('admin_code', adminCode)
+      .single();
 
-    return eventResults[0] || null;
+    return error ? null : event;
   } catch (error) {
     console.error('Error getting event by admin code:', error);
     return null;

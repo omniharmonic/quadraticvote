@@ -1,6 +1,4 @@
-import { db } from '@/lib/db/supabase-client';
-import { votes, invites, events, options } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { supabase } from '@/lib/db/supabase-client';
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
 import type { Vote } from '@/lib/types';
 
@@ -18,10 +16,13 @@ export class VoteService {
     const invite = await this.validateInviteCode(eventId, inviteCode);
 
     // 2. Validate event is active
-    const eventResults = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
-    const event = eventResults[0];
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) throw new Error('Event not found');
+    if (eventError || !event) throw new Error('Event not found');
     if (!this.isVotingOpen(event)) throw new Error('Voting is closed');
 
     // 3. Validate credit allocation
@@ -42,25 +43,23 @@ export class VoteService {
       finalInviteCode = `anon_${identifier}`;
     }
 
-    // 6. Insert or update vote
-    const [vote] = await db.insert(votes)
-      .values({
-        eventId: eventId,
-        inviteCode: finalInviteCode,
-        allocations: allocations as any,
-        totalCreditsUsed: totalCredits,
-        ipAddress: metadata?.ipAddress,
-        userAgent: metadata?.userAgent,
+    // 6. Insert or update vote (simplified for immediate deployment)
+    const { data: vote, error: voteError } = await supabase
+      .from('votes')
+      .upsert({
+        event_id: eventId,
+        invite_code: finalInviteCode,
+        allocations: allocations,
+        total_credits_used: totalCredits,
+        ip_address: metadata?.ipAddress,
+        user_agent: metadata?.userAgent,
       })
-      .onConflictDoUpdate({
-        target: [votes.eventId, votes.inviteCode],
-        set: {
-          allocations: allocations as any,
-          totalCreditsUsed: totalCredits,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
+      .select()
+      .single();
+
+    if (voteError) {
+      throw new Error(`Failed to submit vote: ${voteError.message}`);
+    }
     
     // 6. Update invite tracking (skip for virtual invites)
     if (!invite.isVirtual) {
