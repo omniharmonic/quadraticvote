@@ -37,7 +37,6 @@ export class EventService {
       show_results_during_voting: input.showResultsDuringVoting,
       show_results_after_close: input.showResultsAfterClose,
       created_by: userId ? userId : null,
-      admin_code: generateInviteCode(),
     };
 
     console.log('DEBUG EventService.createEvent about to insert:', {
