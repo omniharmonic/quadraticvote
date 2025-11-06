@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/db/supabase-client';
 
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
-
-import { db } from '@/lib/db/supabase-client';
-import { options } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
 
 /**
  * GET /api/events/:id/options
@@ -18,13 +15,19 @@ export async function GET(
   try {
     const eventId = params.id;
 
-    const eventOptions = await db.select().from(options)
-      .where(eq(options.eventId, eventId))
-      .orderBy(options.position);
+    const { data: eventOptions, error } = await supabase
+      .from('options')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('position', { ascending: true });
+
+    if (error) {
+      throw new Error(`Failed to fetch options: ${error.message}`);
+    }
 
     return NextResponse.json({
       success: true,
-      options: eventOptions,
+      options: eventOptions || [],
     });
   } catch (error) {
     console.error('Options fetch error:', error);
@@ -62,18 +65,32 @@ export async function POST(
     }
 
     // Get the next position
-    const existingOptions = await db.select().from(options)
-      .where(eq(options.eventId, eventId));
+    const { data: existingOptions, error: countError } = await supabase
+      .from('options')
+      .select('id')
+      .eq('event_id', eventId);
 
-    const nextPosition = existingOptions.length;
+    if (countError) {
+      throw new Error(`Failed to count existing options: ${countError.message}`);
+    }
 
-    const [newOption] = await db.insert(options).values({
-      eventId,
-      title: title.trim(),
-      description: description?.trim() || '',
-      position: nextPosition,
-      source: 'admin',
-    }).returning();
+    const nextPosition = (existingOptions || []).length;
+
+    const { data: newOption, error: insertError } = await supabase
+      .from('options')
+      .insert({
+        event_id: eventId,
+        title: title.trim(),
+        description: description?.trim() || '',
+        position: nextPosition,
+        source: 'admin',
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      throw new Error(`Failed to create option: ${insertError.message}`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -130,19 +147,26 @@ export async function PUT(
       updateData.position = position;
     }
 
-    const [updatedOption] = await db.update(options)
-      .set(updateData)
-      .where(and(
-        eq(options.id, optionId),
-        eq(options.eventId, eventId)
-      ))
-      .returning();
+    const { data: updatedOption, error: updateError } = await supabase
+      .from('options')
+      .update({
+        title: updateData.title,
+        description: updateData.description,
+        ...(typeof updateData.position === 'number' ? { position: updateData.position } : {})
+      })
+      .eq('id', optionId)
+      .eq('event_id', eventId)
+      .select()
+      .single();
 
-    if (!updatedOption) {
-      return NextResponse.json(
-        { success: false, error: 'Option not found' },
-        { status: 404 }
-      );
+    if (updateError) {
+      if (updateError.code === 'PGRST116') { // No rows returned
+        return NextResponse.json(
+          { success: false, error: 'Option not found' },
+          { status: 404 }
+        );
+      }
+      throw new Error(`Failed to update option: ${updateError.message}`);
     }
 
     return NextResponse.json({
@@ -183,18 +207,22 @@ export async function DELETE(
       );
     }
 
-    const deletedOptions = await db.delete(options)
-      .where(and(
-        eq(options.id, optionId),
-        eq(options.eventId, eventId)
-      ))
-      .returning();
+    const { data: deletedOption, error: deleteError } = await supabase
+      .from('options')
+      .delete()
+      .eq('id', optionId)
+      .eq('event_id', eventId)
+      .select()
+      .single();
 
-    if (deletedOptions.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Option not found' },
-        { status: 404 }
-      );
+    if (deleteError) {
+      if (deleteError.code === 'PGRST116') { // No rows returned
+        return NextResponse.json(
+          { success: false, error: 'Option not found' },
+          { status: 404 }
+        );
+      }
+      throw new Error(`Failed to delete option: ${deleteError.message}`);
     }
 
     return NextResponse.json({
