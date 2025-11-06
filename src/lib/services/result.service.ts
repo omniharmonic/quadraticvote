@@ -47,9 +47,9 @@ export class ResultService {
       .from('votes')
       .select('*')
       .eq('event_id', eventId);
-    
+
     // 3. Aggregate quadratic votes
-    const voteTotals = aggregateVotes(allVotes.map(v => ({ allocations: v.allocations as Record<string, number> })));
+    const voteTotals = aggregateVotes((allVotes || []).map(v => ({ allocations: v.allocations as Record<string, number> })));
     
     // 4. Calculate results based on framework
     const framework = (event.decisionFramework as any).framework_type;
@@ -79,8 +79,8 @@ export class ResultService {
       framework_type: framework,
       results: frameworkResults,
       participation: {
-        total_voters: allVotes.length,
-        total_credits_allocated: allVotes.reduce((sum, v) => sum + v.totalCreditsUsed, 0),
+        total_voters: (allVotes || []).length,
+        total_credits_allocated: (allVotes || []).reduce((sum, v) => sum + v.total_credits_used, 0),
         voting_start: event.startTime,
         voting_end: event.endTime,
         is_final: this.isEventClosed(event),

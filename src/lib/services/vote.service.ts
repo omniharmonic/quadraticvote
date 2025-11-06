@@ -63,12 +63,13 @@ export class VoteService {
     
     // 6. Update invite tracking (skip for virtual invites)
     if (!invite.isVirtual) {
-      await db.update(invites)
-        .set({
-          voteSubmittedAt: new Date(),
-          usedAt: new Date(),
+      await supabase
+        .from('invites')
+        .update({
+          vote_submitted_at: new Date().toISOString(),
+          used_at: new Date().toISOString(),
         })
-        .where(eq(invites.code, inviteCode));
+        .eq('code', inviteCode);
     }
     
     // 7. Skip cache invalidation (Redis removed)
@@ -85,24 +86,27 @@ export class VoteService {
    */
   private async validateInviteCode(eventId: string, code: string): Promise<any> {
     // First, check if a specific invite code exists
-    const inviteResults = await db.select().from(invites).where(
-      and(
-        eq(invites.eventId, eventId),
-        eq(invites.code, code)
-      )
-    ).limit(1);
-    const invite = inviteResults[0];
+    const { data: invite } = await supabase
+      .from('invites')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('code', code)
+      .limit(1)
+      .single();
 
     if (invite) {
-      if (invite.inviteType === 'proposal_submission') {
+      if (invite.invite_type === 'proposal_submission') {
         throw new Error('This code is only for proposal submission');
       }
       return invite;
     }
 
     // If no specific invite found, check if this is a public event
-    const eventResults = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
-    const event = eventResults[0];
+    const { data: event } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single();
 
     if (!event) throw new Error('Event not found');
 
@@ -110,10 +114,10 @@ export class VoteService {
     if (event.visibility === 'public') {
       // Create a virtual invite for tracking purposes
       return {
-        eventId: eventId,
+        event_id: eventId,
         code: code,
-        inviteType: 'voting',
-        createdAt: new Date(),
+        invite_type: 'voting',
+        created_at: new Date(),
         isVirtual: true // Flag to indicate this is not a real database invite
       };
     }
@@ -138,23 +142,26 @@ export class VoteService {
     allocations: Record<string, number>
   ): Promise<void> {
     // Get valid option IDs for this event
-    const validOptions = await db.select({ id: options.id }).from(options).where(eq(options.eventId, event.id));
-    
-    const validOptionIds = new Set(validOptions.map(o => o.id));
-    
+    const { data: validOptions } = await supabase
+      .from('options')
+      .select('id')
+      .eq('event_id', event.id);
+
+    const validOptionIds = new Set((validOptions || []).map(o => o.id));
+
     // Check all allocated option IDs are valid
     for (const optionId of Object.keys(allocations)) {
       if (!validOptionIds.has(optionId)) {
         throw new Error(`Invalid option ID: ${optionId}`);
       }
     }
-    
+
     // Check credit sum
     const totalCredits = getTotalCredits(allocations);
-    if (totalCredits > event.creditsPerVoter) {
-      throw new Error(`Total credits (${totalCredits}) exceeds limit (${event.creditsPerVoter})`);
+    if (totalCredits > event.credits_per_voter) {
+      throw new Error(`Total credits (${totalCredits}) exceeds limit (${event.credits_per_voter})`);
     }
-    
+
     // Check all values are non-negative integers
     for (const [optionId, credits] of Object.entries(allocations)) {
       if (credits < 0 || !Number.isInteger(credits)) {
@@ -169,14 +176,13 @@ export class VoteService {
    * Get voter's current allocation
    */
   async getVoteByCode(eventId: string, inviteCode: string): Promise<Vote | null> {
-    const voteResults = await db.select().from(votes).where(
-      and(
-        eq(votes.eventId, eventId),
-        eq(votes.inviteCode, inviteCode)
-      )
-    ).limit(1);
-    const vote = voteResults[0];
-    
+    const { data: vote } = await supabase
+      .from('votes')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('invite_code', inviteCode)
+      .single();
+
     return vote ? (vote as Vote) : null;
   }
   
@@ -184,9 +190,12 @@ export class VoteService {
    * Get all votes for an event (for results calculation)
    */
   async getVotesByEventId(eventId: string): Promise<Vote[]> {
-    const result = await db.select().from(votes).where(eq(votes.eventId, eventId));
+    const { data: result } = await supabase
+      .from('votes')
+      .select('*')
+      .eq('event_id', eventId);
 
-    return result as Vote[];
+    return (result || []) as Vote[];
   }
 }
 

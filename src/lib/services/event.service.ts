@@ -1,4 +1,4 @@
-import { db } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/db/supabase-client';
 import { generateInviteCode } from '@/lib/utils/auth';
 import type { CreateEventInput } from '@/lib/validators/index';
 import type { Event, DecisionFramework } from '@/lib/types';
@@ -17,73 +17,89 @@ export class EventService {
       title: input.title
     });
 
-    // Begin transaction
-    return await db.transaction(async (tx) => {
-      // 1. Insert event
-      const eventData = {
-        title: input.title,
-        description: input.description,
-        tags: input.tags,
-        image_url: input.imageUrl,
-        visibility: input.visibility || 'public', // Safety fallback
-        start_time: new Date(input.startTime).toISOString(),
-        end_time: new Date(input.endTime).toISOString(),
-        timezone: input.timezone,
-        decision_framework: input.decisionFramework as any,
-        option_mode: input.optionMode,
-        proposal_config: input.proposalConfig,
-        credits_per_voter: input.creditsPerVoter,
-        weighting_mode: input.weightingMode,
-        weighting_config: input.weightingConfig,
-        token_gating: input.tokenGating,
-        show_results_during_voting: input.showResultsDuringVoting,
-        show_results_after_close: input.showResultsAfterClose,
-        // vote_settings: input.voteSettings, // Temporarily disabled until DB migration
-        created_by: userId ? userId : null,
-        // admin_code: generateInviteCode(), // Temporarily disabled - column doesn't exist in DB
-      };
+    // 1. Insert event
+    const eventData = {
+      title: input.title,
+      description: input.description,
+      tags: input.tags,
+      image_url: input.imageUrl,
+      visibility: input.visibility || 'public', // Safety fallback
+      start_time: new Date(input.startTime).toISOString(),
+      end_time: new Date(input.endTime).toISOString(),
+      timezone: input.timezone,
+      decision_framework: input.decisionFramework as any,
+      option_mode: input.optionMode,
+      proposal_config: input.proposalConfig,
+      credits_per_voter: input.creditsPerVoter,
+      weighting_mode: input.weightingMode,
+      weighting_config: input.weightingConfig,
+      token_gating: input.tokenGating,
+      show_results_during_voting: input.showResultsDuringVoting,
+      show_results_after_close: input.showResultsAfterClose,
+      created_by: userId ? userId : null,
+      admin_code: generateInviteCode(),
+    };
 
-      console.log('DEBUG EventService.createEvent about to insert:', {
-        proposalConfig: eventData.proposal_config,
-        optionMode: eventData.option_mode
-      });
-
-      const event = await tx.events.create(eventData);
-
-      console.log('DEBUG EventService.createEvent after insert:', {
-        eventId: event.id,
-        proposalConfig: event.proposal_config,
-        optionMode: event.option_mode
-      });
-
-      // 2. If admin-defined options, insert them
-      if (input.optionMode !== 'community_proposals' && input.initialOptions && input.initialOptions.length > 0) {
-        const optionData = input.initialOptions.map((opt, index) => ({
-          event_id: event.id,
-          title: opt.title,
-          description: opt.description,
-          image_url: opt.imageUrl,
-          position: index,
-          source: 'admin' as const,
-        }));
-
-        await tx.options.create(optionData);
-      }
-
-      // 3. If invite list provided, generate codes
-      if (input.inviteEmails && input.inviteEmails.length > 0) {
-        const inviteRecords = input.inviteEmails.map(email => ({
-          event_id: event.id,
-          email: email,
-          code: generateInviteCode(),
-          invite_type: this.determineInviteType(input) as 'voting' | 'proposal_submission' | 'both',
-        }));
-
-        await tx.invites.create(inviteRecords);
-      }
-
-      return event as Event;
+    console.log('DEBUG EventService.createEvent about to insert:', {
+      proposalConfig: eventData.proposal_config,
+      optionMode: eventData.option_mode
     });
+
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .insert(eventData)
+      .select()
+      .single();
+
+    if (eventError) {
+      throw new Error(`Failed to create event: ${eventError.message}`);
+    }
+
+    console.log('DEBUG EventService.createEvent after insert:', {
+      eventId: event.id,
+      proposalConfig: event.proposal_config,
+      optionMode: event.option_mode
+    });
+
+    // 2. If admin-defined options, insert them
+    if (input.optionMode !== 'community_proposals' && input.initialOptions && input.initialOptions.length > 0) {
+      const optionData = input.initialOptions.map((opt, index) => ({
+        event_id: event.id,
+        title: opt.title,
+        description: opt.description,
+        image_url: opt.imageUrl,
+        position: index,
+        source: 'admin' as const,
+      }));
+
+      const { error: optionsError } = await supabase
+        .from('options')
+        .insert(optionData);
+
+      if (optionsError) {
+        throw new Error(`Failed to create options: ${optionsError.message}`);
+      }
+    }
+
+    // 3. If invite list provided, generate codes
+    if (input.inviteEmails && input.inviteEmails.length > 0) {
+      const inviteRecords = input.inviteEmails.map(email => ({
+        event_id: event.id,
+        email: email,
+        code: generateInviteCode(),
+        invite_type: this.determineInviteType(input) as 'voting' | 'proposal_submission' | 'both',
+      }));
+
+      const { error: invitesError } = await supabase
+        .from('invites')
+        .insert(inviteRecords);
+
+      if (invitesError) {
+        throw new Error(`Failed to create invites: ${invitesError.message}`);
+      }
+    }
+
+    return event as Event;
   }
   
   /**
@@ -134,18 +150,26 @@ export class EventService {
    * Get event by ID with related data
    */
   async getEventById(eventId: string): Promise<(Event & { options: any[] }) | null> {
-    const event = await db.events.findById(eventId);
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return null;
     }
 
     // Fetch options separately
-    const eventOptions = await db.options.findByEventId(eventId);
+    const { data: eventOptions } = await supabase
+      .from('options')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('position', { ascending: true });
 
     return {
       ...event,
-      options: eventOptions
+      options: eventOptions || []
     } as any;
   }
   
@@ -174,11 +198,17 @@ export class EventService {
    * Get all active events
    */
   async getActiveEvents(): Promise<Event[]> {
-    const result = await db.events.findMany({
-      visibility: 'public'
-    });
+    const { data: result, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('visibility', 'public')
+      .order('created_at', { ascending: false });
 
-    return result as Event[];
+    if (error) {
+      throw new Error(`Failed to fetch events: ${error.message}`);
+    }
+
+    return (result || []) as Event[];
   }
 }
 
