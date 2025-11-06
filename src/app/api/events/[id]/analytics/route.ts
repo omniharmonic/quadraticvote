@@ -3,9 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
-import { db } from '@/lib/db/supabase-client';
-import { events, votes, proposals, invites, options } from '@/lib/db/schema';
-import { eq, count, avg, max, min, sql } from 'drizzle-orm';
+import { supabase } from '@/lib/db/supabase-client';
 
 // Fixed import path to resolve webpack caching issue
 export async function GET(
@@ -17,94 +15,45 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const range = searchParams.get('range') || 'all';
 
-    // Get basic event info using Drizzle
-    const event = await db.select({
-      id: events.id,
-      title: events.title,
-      startTime: events.startTime,
-      endTime: events.endTime,
-      createdAt: events.createdAt
-    }).from(events).where(eq(events.id, eventId)).limit(1);
+    // Get basic event info using Supabase
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('id, title, start_time, end_time, created_at')
+      .eq('id', eventId)
+      .single();
 
-    if (event.length === 0) {
+    if (eventError || !event) {
       return NextResponse.json(
         { success: false, error: 'Event not found' },
         { status: 404 }
       );
     }
 
-    // Get real analytics data
+    // Get real analytics data using Supabase
     const [
-      votingStats,
-      proposalStats,
-      inviteStats,
-      eventOptions,
-      individualVotes,
-      timelineData
+      { data: allVotes },
+      { data: allProposals },
+      { data: allInvites },
+      { data: eventOptions }
     ] = await Promise.all([
-      // Voting statistics
-      db.select({
-        total_votes: count(),
-        unique_voters: sql<number>`count(distinct ${votes.inviteCode})`,
-        avg_credits_used: avg(votes.totalCreditsUsed),
-        max_credits_used: max(votes.totalCreditsUsed),
-        min_credits_used: min(votes.totalCreditsUsed),
-      }).from(votes).where(eq(votes.eventId, eventId)),
-
-      // Proposal statistics
-      db.select({
-        total: count(),
-        status: proposals.status
-      }).from(proposals)
-       .where(eq(proposals.eventId, eventId))
-       .groupBy(proposals.status),
-
-      // Invite statistics
-      db.select({
-        total: count(),
-        used: sql<number>`count(case when ${invites.usedAt} is not null then 1 end)`,
-        opened: sql<number>`count(case when ${invites.openedAt} is not null then 1 end)`,
-      }).from(invites).where(eq(invites.eventId, eventId)),
-
-      // Get all options for this event
-      db.select({
-        id: options.id,
-        title: options.title
-      }).from(options).where(eq(options.eventId, eventId)),
-
-      // Individual vote data for network analysis
-      db.select({
-        id: votes.id,
-        inviteCode: votes.inviteCode,
-        allocations: votes.allocations,
-        totalCreditsUsed: votes.totalCreditsUsed,
-        submittedAt: votes.submittedAt,
-        ipAddress: votes.ipAddress
-      }).from(votes).where(eq(votes.eventId, eventId)),
-
-      // Timeline data (votes over time)
-      db.select({
-        hour: sql<string>`date_trunc('hour', ${votes.submittedAt})`,
-        voteCount: count(),
-        totalCredits: sql<number>`sum(${votes.totalCreditsUsed})`
-      }).from(votes)
-       .where(eq(votes.eventId, eventId))
-       .groupBy(sql`date_trunc('hour', ${votes.submittedAt})`)
-       .orderBy(sql`date_trunc('hour', ${votes.submittedAt})`)
+      supabase.from('votes').select('*').eq('event_id', eventId),
+      supabase.from('proposals').select('*').eq('event_id', eventId),
+      supabase.from('invites').select('*').eq('event_id', eventId),
+      supabase.from('options').select('id, title').eq('event_id', eventId)
     ]);
 
-    // Process proposal stats into the expected format
-    const proposalCounts = proposalStats.reduce((acc, stat) => {
-      acc[stat.status || 'unknown'] = stat.total;
-      return acc;
-    }, {} as Record<string, number>);
+    // Calculate statistics in JavaScript since we can't use complex SQL aggregations
+    const votingStats = calculateVotingStats(allVotes || []);
+    const proposalStats = calculateProposalStats(allProposals || []);
+    const inviteStats = calculateInviteStats(allInvites || []);
+    const timelineData = calculateTimelineData(allVotes || []);
 
     // Calculate option performance in JavaScript
-    const optionPerformance = eventOptions.map(option => {
+    const optionPerformance = (eventOptions || []).map(option => {
       let totalCredits = 0;
       let voteCount = 0;
 
-      individualVotes.forEach(vote => {
+      (allVotes || []).forEach(vote => {
         const allocations = vote.allocations as Record<string, number>;
         const credits = allocations[option.id];
         if (credits && credits > 0) {
@@ -123,39 +72,17 @@ export async function GET(
     });
 
     // Generate network graph data
-    const networkData = generateNetworkGraph(individualVotes, optionPerformance);
+    const networkData = generateNetworkGraph(allVotes || [], optionPerformance);
 
     // Generate cluster analysis
-    const clusterAnalysis = generateClusterAnalysis(individualVotes);
-
-    // Process timeline data
-    const processedTimeline = timelineData.map(t => ({
-      timestamp: t.hour,
-      voteCount: Number(t.voteCount),
-      totalCredits: Number(t.totalCredits)
-    }));
+    const clusterAnalysis = generateClusterAnalysis(allVotes || []);
 
     const analytics = {
-      event: event[0],
-      voting: {
-        total_votes: votingStats[0]?.total_votes || 0,
-        unique_voters: Number(votingStats[0]?.unique_voters) || 0,
-        avg_credits_used: Number(votingStats[0]?.avg_credits_used) || 0,
-        max_credits_used: Number(votingStats[0]?.max_credits_used) || 0,
-        min_credits_used: Number(votingStats[0]?.min_credits_used) || 0,
-      },
-      proposals: {
-        total: Object.values(proposalCounts).reduce((a, b) => a + b, 0),
-        approved: proposalCounts['approved'] || 0,
-        pending: (proposalCounts['pending_approval'] || 0) + (proposalCounts['submitted'] || 0),
-        rejected: proposalCounts['rejected'] || 0,
-      },
-      invites: {
-        total: inviteStats[0]?.total || 0,
-        used: Number(inviteStats[0]?.used) || 0,
-        opened: Number(inviteStats[0]?.opened) || 0,
-      },
-      participation_over_time: processedTimeline,
+      event: event,
+      voting: votingStats,
+      proposals: proposalStats,
+      invites: inviteStats,
+      participation_over_time: timelineData,
       option_performance: optionPerformance.map(opt => ({
         option_id: opt.optionId,
         title: opt.title,
@@ -166,13 +93,13 @@ export async function GET(
       // New advanced analytics data
       network_graph: networkData,
       cluster_analysis: clusterAnalysis,
-      individual_votes: individualVotes.map(vote => ({
+      individual_votes: (allVotes || []).map(vote => ({
         id: vote.id,
-        voter_id: vote.inviteCode,
+        voter_id: vote.invite_code,
         allocations: vote.allocations,
-        total_credits: vote.totalCreditsUsed,
-        timestamp: vote.submittedAt,
-        ip_hash: vote.ipAddress ? hashString(vote.ipAddress) : null
+        total_credits: vote.total_credits_used,
+        timestamp: vote.submitted_at,
+        ip_hash: vote.ip_address ? hashString(vote.ip_address) : null
       }))
     };
 
@@ -190,6 +117,81 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+// Helper functions to calculate statistics in JavaScript
+function calculateVotingStats(votes: any[]) {
+  if (votes.length === 0) {
+    return {
+      total_votes: 0,
+      unique_voters: 0,
+      avg_credits_used: 0,
+      max_credits_used: 0,
+      min_credits_used: 0,
+    };
+  }
+
+  const uniqueVoters = new Set(votes.map(v => v.invite_code)).size;
+  const totalCredits = votes.reduce((sum, v) => sum + (v.total_credits_used || 0), 0);
+  const creditsUsed = votes.map(v => v.total_credits_used || 0);
+
+  return {
+    total_votes: votes.length,
+    unique_voters: uniqueVoters,
+    avg_credits_used: totalCredits / votes.length,
+    max_credits_used: Math.max(...creditsUsed),
+    min_credits_used: Math.min(...creditsUsed),
+  };
+}
+
+function calculateProposalStats(proposals: any[]) {
+  const counts = proposals.reduce((acc, p) => {
+    const status = p.status || 'unknown';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return {
+    total: proposals.length,
+    approved: counts['approved'] || 0,
+    pending: (counts['pending_approval'] || 0) + (counts['submitted'] || 0),
+    rejected: counts['rejected'] || 0,
+  };
+}
+
+function calculateInviteStats(invites: any[]) {
+  const used = invites.filter(i => i.used_at).length;
+  const opened = invites.filter(i => i.opened_at).length;
+
+  return {
+    total: invites.length,
+    used: used,
+    opened: opened,
+  };
+}
+
+function calculateTimelineData(votes: any[]) {
+  // Group votes by hour
+  const hourlyData: Record<string, { voteCount: number, totalCredits: number }> = {};
+
+  votes.forEach(vote => {
+    if (vote.submitted_at) {
+      const hour = new Date(vote.submitted_at).toISOString().substring(0, 13) + ':00:00Z';
+      if (!hourlyData[hour]) {
+        hourlyData[hour] = { voteCount: 0, totalCredits: 0 };
+      }
+      hourlyData[hour].voteCount += 1;
+      hourlyData[hour].totalCredits += vote.total_credits_used || 0;
+    }
+  });
+
+  return Object.entries(hourlyData)
+    .map(([timestamp, data]) => ({
+      timestamp,
+      voteCount: data.voteCount,
+      totalCredits: data.totalCredits
+    }))
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
 // Helper function to generate network graph data
@@ -222,11 +224,11 @@ function generateNetworkGraph(votes: any[], options: any[]) {
   votes.forEach((vote, index) => {
     const angle = (index / votes.length) * 2 * Math.PI;
     nodes.push({
-      id: `voter_${vote.inviteCode}`,
+      id: `voter_${vote.invite_code}`,
       type: 'voter',
       label: `Voter ${index + 1}`,
-      credits: vote.totalCreditsUsed,
-      timestamp: vote.submittedAt,
+      credits: vote.total_credits_used,
+      timestamp: vote.submitted_at,
       x: centerX + Math.cos(angle) * voterRadius,
       y: centerY + Math.sin(angle) * voterRadius
     });
@@ -238,12 +240,12 @@ function generateNetworkGraph(votes: any[], options: any[]) {
     Object.entries(allocations).forEach(([optionId, credits]) => {
       if (credits > 0) {
         edges.push({
-          id: `${vote.inviteCode}_${optionId}`,
-          source: `voter_${vote.inviteCode}`,
+          id: `${vote.invite_code}_${optionId}`,
+          source: `voter_${vote.invite_code}`,
           target: `option_${optionId}`,
           weight: credits,
           label: `${credits} credits`,
-          timestamp: vote.submittedAt
+          timestamp: vote.submitted_at
         });
       }
     });
@@ -276,7 +278,7 @@ function generateClusterAnalysis(votes: any[]) {
 
   // Convert patterns to clusters
   Object.entries(votingPatterns).forEach(([pattern, voters], index) => {
-    const totalCredits = voters.reduce((sum, voter) => sum + voter.totalCreditsUsed, 0);
+    const totalCredits = voters.reduce((sum, voter) => sum + (voter.total_credits_used || 0), 0);
     const avgCredits = totalCredits / voters.length;
 
     clusters.push({
@@ -285,7 +287,7 @@ function generateClusterAnalysis(votes: any[]) {
       voterCount: voters.length,
       totalCredits: totalCredits,
       avgCredits: avgCredits,
-      voters: voters.map(v => v.inviteCode),
+      voters: voters.map(v => v.invite_code),
       percentage: (voters.length / votes.length) * 100
     });
   });
