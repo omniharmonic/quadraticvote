@@ -28,16 +28,25 @@ export class ResultService {
    */
   private async calculateResults(eventId: string): Promise<EventResults> {
     // 1. Fetch event configuration
-    const eventResult = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
-    const event = eventResult[0];
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) throw new Error('Event not found');
+    if (eventError || !event) throw new Error('Event not found');
 
     // 1.1. Fetch event options separately
-    const eventOptions = await db.select().from(options).where(eq(options.eventId, eventId));
+    const { data: eventOptions } = await supabase
+      .from('options')
+      .select('*')
+      .eq('event_id', eventId);
 
     // 2. Fetch all votes
-    const allVotes = await db.select().from(votes).where(eq(votes.eventId, eventId));
+    const { data: allVotes } = await supabase
+      .from('votes')
+      .select('*')
+      .eq('event_id', eventId);
     
     // 3. Aggregate quadratic votes
     const voteTotals = aggregateVotes(allVotes.map(v => ({ allocations: v.allocations as Record<string, number> })));
