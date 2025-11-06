@@ -26,14 +26,25 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
   const [isInviting, setIsInviting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  const isAdmin = isEventAdmin(eventId);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (isAdmin) {
-      fetchInvitations();
-    }
-  }, [eventId, isAdmin]);
+    const checkAdminStatus = async () => {
+      if (user) {
+        const adminStatus = await isEventAdmin(eventId);
+        setIsAdmin(adminStatus);
+        if (adminStatus) {
+          await fetchInvitations();
+        } else {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, [eventId, user, isEventAdmin]);
 
   const fetchInvitations = async () => {
     try {
