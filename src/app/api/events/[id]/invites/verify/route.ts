@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/db/supabase-client';
 
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
-
-import { db } from '@/lib/db/supabase-client';
-import { invites, events } from '@/lib/db/schema';
-import { eq, and } from 'drizzle-orm';
 
 /**
  * POST /api/events/[id]/invites/verify
@@ -27,10 +24,13 @@ export async function POST(
     }
 
     // Verify the event exists first
-    const eventResults = await db.select().from(events).where(eq(events.id, eventId)).limit(1);
-    const event = eventResults[0];
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single();
 
-    if (!event) {
+    if (eventError || !event) {
       return NextResponse.json({
         success: false,
         valid: false,
@@ -53,16 +53,14 @@ export async function POST(
     }
 
     // Find the invite
-    const inviteResults = await db.select().from(invites).where(
-      and(
-        eq(invites.eventId, eventId),
-        eq(invites.code, code)
-      )
-    ).limit(1);
+    const { data: invite, error: inviteError } = await supabase
+      .from('invites')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('code', code)
+      .single();
 
-    const invite = inviteResults[0];
-
-    if (!invite) {
+    if (inviteError || !invite) {
       return NextResponse.json({
         success: false,
         valid: false,
@@ -71,7 +69,7 @@ export async function POST(
     }
 
     // Check if invite type allows voting
-    if (invite.inviteType === 'proposal_submission') {
+    if (invite.invite_type === 'proposal_submission') {
       return NextResponse.json({
         success: false,
         valid: false,
@@ -79,12 +77,12 @@ export async function POST(
       });
     }
 
-
     // Update invite tracking - mark as opened if not already
-    if (!invite.openedAt) {
-      await db.update(invites)
-        .set({ openedAt: new Date() })
-        .where(eq(invites.id, invite.id));
+    if (!invite.opened_at) {
+      await supabase
+        .from('invites')
+        .update({ opened_at: new Date().toISOString() })
+        .eq('id', invite.id);
     }
 
     return NextResponse.json({
@@ -93,8 +91,8 @@ export async function POST(
       invite: {
         id: invite.id,
         email: invite.email,
-        inviteType: invite.inviteType,
-        openedAt: invite.openedAt
+        inviteType: invite.invite_type,
+        openedAt: invite.opened_at
       }
     });
 
