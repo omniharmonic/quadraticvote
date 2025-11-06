@@ -9,7 +9,7 @@ interface AcceptInviteFormProps {
 }
 
 export function AcceptInviteForm({ inviteCode: initialCode }: AcceptInviteFormProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const router = useRouter();
   const [inviteCode, setInviteCode] = useState(initialCode || '');
   const [isAccepting, setIsAccepting] = useState(false);
@@ -38,7 +38,7 @@ export function AcceptInviteForm({ inviteCode: initialCode }: AcceptInviteFormPr
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.accessToken}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           inviteCode: inviteCode.trim(),

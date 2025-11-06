@@ -18,7 +18,7 @@ interface AdminInviteManagerProps {
 }
 
 export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
-  const { user, isEventAdmin } = useAuth();
+  const { user, session, isEventAdmin } = useAuth();
   const [invitations, setInvitations] = useState<AdminInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -39,7 +39,7 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
     try {
       const response = await fetch(`/api/events/${eventId}/admin-invite`, {
         headers: {
-          'Authorization': `Bearer ${user?.accessToken}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
       });
 
@@ -68,7 +68,7 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.accessToken}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           email: inviteEmail.trim(),
