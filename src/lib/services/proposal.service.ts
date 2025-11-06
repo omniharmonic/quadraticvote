@@ -1,6 +1,4 @@
-import { db } from '@/lib/db/supabase-client';
-import { proposals, events, invites, options } from '@/lib/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { supabase } from '@/lib/db/supabase-client';
 import { hashString } from '@/lib/utils/auth';
 import type { Proposal } from '@/lib/types';
 
@@ -19,10 +17,13 @@ export class ProposalService {
     inviteCode?: string;
   }): Promise<Proposal> {
     // 1. Validate event accepts proposals
-    const eventResults = await db.select().from(events).where(eq(events.id, input.eventId)).limit(1);
-    const event = eventResults[0];
-    
-    if (!event) throw new Error('Event not found');
+    const { data: event, error: eventError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', input.eventId)
+      .single();
+
+    if (eventError || !event) throw new Error('Event not found');
     if (!this.areProposalsOpen(event)) throw new Error('Proposal submission is closed');
     
     // 2. Validate submitter authorization if needed
@@ -37,37 +38,40 @@ export class ProposalService {
     // 4. Determine initial status based on moderation mode
     const initialStatus = this.getInitialStatus(event.proposalConfig);
     
-    // 5. Insert proposal and auto-convert if approved
-    let proposal: any;
-
-    await db.transaction(async (tx) => {
-      [proposal] = await tx.insert(proposals).values({
-        eventId: input.eventId,
+    // 5. Insert proposal
+    const { data: proposal, error: insertError } = await supabase
+      .from('proposals')
+      .insert({
+        event_id: input.eventId,
         title: input.title,
         description: input.description,
-        imageUrl: input.imageUrl,
-        submitterEmail: input.submitterEmail,
-        submitterWallet: input.submitterWallet,
-        payoutWallet: input.payoutWallet,
-        submitterAnonymousId: anonymousId,
+        image_url: input.imageUrl,
+        submitter_email: input.submitterEmail,
+        submitter_wallet: input.submitterWallet,
+        payout_wallet: input.payoutWallet,
+        submitter_anonymous_id: anonymousId,
         status: initialStatus,
-        submittedAt: initialStatus !== 'draft' ? new Date() : null,
-      }).returning();
+        submitted_at: initialStatus !== 'draft' ? new Date().toISOString() : null,
+      })
+      .select()
+      .single();
 
-      // 6. Auto-convert to option if approved (moderation disabled)
-      if (initialStatus === 'approved') {
-        await this.convertSingleProposalToOption(proposal, tx);
-      }
+    if (insertError) {
+      throw new Error(`Failed to create proposal: ${insertError.message}`);
+    }
 
-      // 7. Update invite tracking if applicable
-      if (input.inviteCode) {
-        await tx.update(invites)
-          .set({
-            proposalsSubmitted: 1, // Simplified for now
-          })
-          .where(eq(invites.code, input.inviteCode));
-      }
-    });
+    // 6. Auto-convert to option if approved (simplified)
+    if (initialStatus === 'approved') {
+      await this.convertSingleProposalToOption(proposal);
+    }
+
+    // 7. Update invite tracking if applicable (simplified)
+    if (input.inviteCode) {
+      await supabase
+        .from('invites')
+        .update({ proposals_submitted: 1 })
+        .eq('code', input.inviteCode);
+    }
 
     return proposal as Proposal;
   }
@@ -171,16 +175,15 @@ export class ProposalService {
     email: string,
     inviteCode: string
   ): Promise<void> {
-    const inviteResults = await db.select().from(invites).where(
-      and(
-        eq(invites.eventId, eventId),
-        eq(invites.code, inviteCode)
-      )
-    ).limit(1);
-    const invite = inviteResults[0];
-    
-    if (!invite) throw new Error('Invalid invite code');
-    if (invite.inviteType === 'voting') {
+    const { data: invite, error } = await supabase
+      .from('invites')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('code', inviteCode)
+      .single();
+
+    if (error || !invite) throw new Error('Invalid invite code');
+    if (invite.invite_type === 'voting') {
       throw new Error('This code is only for voting');
     }
   }
@@ -207,37 +210,48 @@ export class ProposalService {
   }
 
   /**
-   * Convert a single proposal to an option
+   * Convert a single proposal to an option (simplified)
    */
-  private async convertSingleProposalToOption(proposal: any, tx?: any): Promise<void> {
-    const dbClient = tx || db;
-
+  private async convertSingleProposalToOption(proposal: any): Promise<void> {
     // Skip if already converted
-    if (proposal.convertedToOptionId) return;
+    if (proposal.converted_to_option_id) return;
 
     // Get current max position for this event
-    const existingOptions = await dbClient.select()
-      .from(options)
-      .where(eq(options.eventId, proposal.eventId))
-      .orderBy(desc(options.position));
+    const { data: existingOptions } = await supabase
+      .from('options')
+      .select('position')
+      .eq('event_id', proposal.event_id)
+      .order('position', { ascending: false })
+      .limit(1);
 
-    const nextPosition = existingOptions.length > 0 ? existingOptions[0].position + 1 : 0;
+    const nextPosition = existingOptions && existingOptions.length > 0
+      ? existingOptions[0].position + 1
+      : 0;
 
     // Insert as option
-    const [option] = await dbClient.insert(options).values({
-      eventId: proposal.eventId,
-      title: proposal.title,
-      description: proposal.description,
-      imageUrl: proposal.imageUrl,
-      position: nextPosition,
-      source: 'community',
-      createdByProposalId: proposal.id,
-    }).returning();
+    const { data: option, error: optionError } = await supabase
+      .from('options')
+      .insert({
+        event_id: proposal.event_id,
+        title: proposal.title,
+        description: proposal.description,
+        image_url: proposal.image_url,
+        position: nextPosition,
+        source: 'community',
+        created_by_proposal_id: proposal.id,
+      })
+      .select()
+      .single();
+
+    if (optionError) {
+      throw new Error(`Failed to create option: ${optionError.message}`);
+    }
 
     // Update proposal with option ID
-    await dbClient.update(proposals)
-      .set({ convertedToOptionId: option.id })
-      .where(eq(proposals.id, proposal.id));
+    await supabase
+      .from('proposals')
+      .update({ converted_to_option_id: option.id })
+      .eq('id', proposal.id);
   }
   
   /**
@@ -247,11 +261,20 @@ export class ProposalService {
     eventId: string,
     status?: string
   ): Promise<Proposal[]> {
-    const whereClause = status
-      ? and(eq(proposals.eventId, eventId), eq(proposals.status, status))
-      : eq(proposals.eventId, eventId);
+    let query = supabase
+      .from('proposals')
+      .select('*')
+      .eq('event_id', eventId);
 
-    const result = await db.select().from(proposals).where(whereClause).orderBy(desc(proposals.submittedAt));
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data: result, error } = await query.order('submitted_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch proposals: ${error.message}`);
+    }
 
     return result as Proposal[];
   }
@@ -260,11 +283,19 @@ export class ProposalService {
    * Get all proposals across all events (for admin)
    */
   async getAllProposals(status?: string): Promise<Proposal[]> {
-    const whereClause = status ? eq(proposals.status, status) : undefined;
+    let query = supabase
+      .from('proposals')
+      .select('*');
 
-    const result = whereClause
-      ? await db.select().from(proposals).where(whereClause).orderBy(desc(proposals.submittedAt))
-      : await db.select().from(proposals).orderBy(desc(proposals.submittedAt));
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data: result, error } = await query.order('submitted_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch proposals: ${error.message}`);
+    }
 
     return result as Proposal[];
   }
@@ -273,22 +304,24 @@ export class ProposalService {
    * Approve proposal (admin action) - automatically converts to option
    */
   async approveProposal(proposalId: string, adminUserId: string | null): Promise<void> {
-    await db.transaction(async (tx) => {
-      // 1. Update proposal status
-      const [proposal] = await tx.update(proposals)
-        .set({
-          status: 'approved',
-          approvedAt: new Date(),
-          approvedBy: adminUserId,
-        })
-        .where(eq(proposals.id, proposalId))
-        .returning();
+    // 1. Update proposal status
+    const { data: proposal, error: updateError } = await supabase
+      .from('proposals')
+      .update({
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: adminUserId,
+      })
+      .eq('id', proposalId)
+      .select()
+      .single();
 
-      if (!proposal) throw new Error('Proposal not found');
+    if (updateError || !proposal) {
+      throw new Error('Proposal not found or failed to update');
+    }
 
-      // 2. Automatically convert to option
-      await this.convertSingleProposalToOption(proposal, tx);
-    });
+    // 2. Automatically convert to option
+    await this.convertSingleProposalToOption(proposal);
   }
   
   /**
@@ -298,56 +331,52 @@ export class ProposalService {
     proposalId: string,
     reason: string
   ): Promise<void> {
-    await db.update(proposals)
-      .set({
+    const { error } = await supabase
+      .from('proposals')
+      .update({
         status: 'rejected',
-        rejectedAt: new Date(),
-        rejectionReason: reason,
+        rejected_at: new Date().toISOString(),
+        rejection_reason: reason,
       })
-      .where(eq(proposals.id, proposalId));
+      .eq('id', proposalId);
+
+    if (error) {
+      throw new Error(`Failed to reject proposal: ${error.message}`);
+    }
   }
   
   /**
-   * Convert approved proposals to voting options
+   * Convert approved proposals to voting options (simplified)
    */
   async convertProposalsToOptions(eventId: string): Promise<number> {
-    // Get all approved proposals
-    const approvedProposals = await this.getProposalsByEventId(eventId, 'approved');
-    
+    // Get all approved proposals that haven't been converted yet
+    const { data: approvedProposals, error } = await supabase
+      .from('proposals')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('status', 'approved')
+      .is('converted_to_option_id', null);
+
+    if (error) {
+      throw new Error(`Failed to fetch proposals: ${error.message}`);
+    }
+
+    if (!approvedProposals || approvedProposals.length === 0) {
+      return 0;
+    }
+
     let converted = 0;
-    
-    await db.transaction(async (tx) => {
-      // Get current max position
-      const existingOptions = await tx.query.options.findMany({
-        where: eq(options.eventId, eventId),
-        orderBy: (options, { desc }) => [desc(options.position)],
-      });
-      
-      let nextPosition = existingOptions.length > 0 ? existingOptions[0].position + 1 : 0;
-      
-      for (const proposal of approvedProposals) {
-        if (proposal.convertedToOptionId) continue; // Already converted
-        
-        // Insert as option
-        const [option] = await tx.insert(options).values({
-          eventId: eventId,
-          title: proposal.title,
-          description: proposal.description,
-          imageUrl: proposal.imageUrl,
-          position: nextPosition++,
-          source: 'community',
-          createdByProposalId: proposal.id,
-        }).returning();
-        
-        // Update proposal with option ID
-        await tx.update(proposals)
-          .set({ convertedToOptionId: option.id })
-          .where(eq(proposals.id, proposal.id));
-        
+
+    for (const proposal of approvedProposals) {
+      try {
+        await this.convertSingleProposalToOption(proposal);
         converted++;
+      } catch (error) {
+        console.error(`Failed to convert proposal ${proposal.id}:`, error);
+        // Continue with other proposals
       }
-    });
-    
+    }
+
     return converted;
   }
 }
