@@ -1,6 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+
+// Force this route to be dynamic (not pre-rendered during build)
+export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, FileText, Settings, BarChart3, UserPlus } from 'lucide-react';

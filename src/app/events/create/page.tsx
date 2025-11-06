@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+// Force this route to be dynamic (not pre-rendered during build)
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,9 +60,15 @@ interface EventFormData {
 
 export default function CreateEventPage() {
   const router = useRouter();
-  const { setAdminCode } = useAdmin();
+  const { user, isAuthenticated, loading } = useAuth();
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push('/auth/login?redirect=/events/create');
+    }
+  }, [loading, isAuthenticated, router]);
   
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -205,11 +214,8 @@ export default function CreateEventPage() {
           description: 'Your event has been created and is ready to use.',
         });
 
-        // Store admin code for future use
-        setAdminCode(data.event.adminCode);
-
-        // Redirect to admin page with admin code
-        router.push(`/admin/events/${data.event.id}?code=${data.event.adminCode}`);
+        // Redirect to the event page
+        router.push(`/events/${data.event.id}`);
       } else {
         throw new Error(data.message || 'Failed to create event');
       }
@@ -225,6 +231,23 @@ export default function CreateEventPage() {
   };
 
   const progress = (currentStep / 6) * 100;
+
+  if (loading) {
+    return (
+      <>
+        <Navigation />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
+          <div className="max-w-4xl mx-auto text-center pt-20">
+            <div className="animate-pulse">Loading...</div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect in useEffect
+  }
 
   return (
     <>

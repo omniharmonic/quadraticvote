@@ -1,6 +1,9 @@
 import { AcceptInviteForm } from '@/components/admin/AcceptInviteForm';
 import { Suspense } from 'react';
 
+// Force this route to be dynamic (not pre-rendered during build)
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   searchParams: { code?: string };
 }
