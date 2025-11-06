@@ -4,15 +4,17 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 import { proposalService } from '@/lib/services/proposal.service';
+import { withAuth } from '@/lib/utils/auth-middleware';
 
 /**
  * POST /api/proposals/[id]/approve
  * Approve a specific proposal
  */
-export async function POST(
+export const POST = withAuth(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: { id: string } },
+  user
+) => {
   try {
     const proposalId = params.id;
 
@@ -23,8 +25,7 @@ export async function POST(
       );
     }
 
-    // For now, we don't have user authentication, so we'll pass null for adminUserId
-    await proposalService.approveProposal(proposalId, null);
+    await proposalService.approveProposal(proposalId, user.id);
 
     return NextResponse.json({
       success: true,
@@ -43,4 +44,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

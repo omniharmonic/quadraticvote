@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/db/supabase-client';
+import { withEventAdmin } from '@/lib/utils/auth-middleware';
 
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
@@ -47,10 +48,12 @@ export async function GET(
  * POST /api/events/:id/options
  * Create a new option for an event
  */
-export async function POST(
+export const POST = withEventAdmin(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: { id: string } },
+  user,
+  role
+) => {
   try {
     const eventId = params.id;
     const body = await request.json();
@@ -108,16 +111,18 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * PUT /api/events/:id/options
  * Update an existing option
  */
-export async function PUT(
+export const PUT = withEventAdmin(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: { id: string } },
+  user,
+  role
+) => {
   try {
     const eventId = params.id;
     const body = await request.json();
@@ -185,16 +190,18 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * DELETE /api/events/:id/options
  * Delete an option
  */
-export async function DELETE(
+export const DELETE = withEventAdmin(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: { id: string } },
+  user,
+  role
+) => {
   try {
     const eventId = params.id;
     const { searchParams } = new URL(request.url);
@@ -241,4 +248,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});

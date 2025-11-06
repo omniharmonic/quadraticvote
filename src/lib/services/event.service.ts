@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/db/supabase-client';
 import { generateInviteCode } from '@/lib/utils/auth';
+import { adminService } from '@/lib/services/admin.service';
 import type { CreateEventInput } from '@/lib/validators/index';
 import type { Event, DecisionFramework } from '@/lib/types';
 
@@ -95,6 +96,15 @@ export class EventService {
 
       if (invitesError) {
         throw new Error(`Failed to create invites: ${invitesError.message}`);
+      }
+    }
+
+    // 4. Add creator as event owner
+    if (userId) {
+      const addAdminResult = await adminService.addEventAdmin(event.id, userId, 'owner');
+      if (!addAdminResult.success) {
+        console.error('Failed to add creator as admin:', addAdminResult.error);
+        // Don't fail event creation for this, but log the error
       }
     }
 

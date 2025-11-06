@@ -4,11 +4,12 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 import { proposalService } from '@/lib/services/proposal.service';
+import { withAuth } from '@/lib/utils/auth-middleware';
 
-async function handleRejection(
+const createHandleRejection = (user: any) => async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     const proposalId = params.id;
     const { reason } = await request.json();
@@ -23,7 +24,7 @@ async function handleRejection(
       );
     }
 
-    await proposalService.rejectProposal(proposalId, reason);
+    await proposalService.rejectProposal(proposalId, reason, user.id);
 
     return NextResponse.json({
       success: true,
@@ -41,16 +42,18 @@ async function handleRejection(
   }
 }
 
-export async function PATCH(
+export const PATCH = withAuth(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  return handleRejection(request, { params });
-}
+  { params }: { params: { id: string } },
+  user
+) => {
+  return createHandleRejection(user)(request, { params });
+});
 
-export async function POST(
+export const POST = withAuth(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  return handleRejection(request, { params });
-}
+  { params }: { params: { id: string } },
+  user
+) => {
+  return createHandleRejection(user)(request, { params });
+});

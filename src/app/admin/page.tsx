@@ -1,10 +1,42 @@
+'use client';
+
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FileText, Settings, BarChart3 } from 'lucide-react';
+import { Users, FileText, Settings, BarChart3, UserPlus } from 'lucide-react';
 import Navigation from '@/components/layout/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function AdminDashboard() {
+  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/auth/login?redirect=/admin');
+      return;
+    }
+    setIsLoading(false);
+  }, [isAuthenticated, router]);
+
+  if (isLoading) {
+    return (
+      <>
+        <Navigation />
+        <div className="container mx-auto py-8">
+          <div className="animate-pulse">Loading admin dashboard...</div>
+        </div>
+      </>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
+
   return (
     <>
       <Navigation />
@@ -12,6 +44,7 @@ export default function AdminDashboard() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <p className="text-gray-600 mt-2">Manage events, proposals, and system settings</p>
+        <p className="text-sm text-gray-500 mt-1">Welcome back, {user.email}</p>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -69,15 +102,42 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
+        {/* Admin Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              Admin Management
+            </CardTitle>
+            <CardDescription>
+              Manage admin users and invitations
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <Link href="/admin/invite">
+                <Button className="w-full" variant="outline">
+                  Accept Admin Invite
+                </Button>
+              </Link>
+              <Link href="/admin/users">
+                <Button className="w-full" variant="outline">
+                  Manage Admin Users
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* User & Invite Management */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
-              Users & Invites
+              User Invites
             </CardTitle>
             <CardDescription>
-              Manage user invitations
+              Manage voting invitations
             </CardDescription>
           </CardHeader>
           <CardContent>

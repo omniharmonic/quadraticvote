@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { eventService } from '@/lib/services/event.service';
 import { createEventSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
+import { withAuth } from '@/lib/utils/auth-middleware';
 
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * POST /api/events
  * Create a new event
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, context, user) => {
   console.log('=== EVENT CREATION API CALLED ===');
   console.log('Environment check:', {
     DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Missing',
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('About to call eventService.createEvent with:', JSON.stringify(eventData, null, 2));
-    const event = await eventService.createEvent(eventData);
+    const event = await eventService.createEvent(eventData, user.id);
     console.log('Event created successfully:', event.id);
 
     // Return success response
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 /**
  * GET /api/events

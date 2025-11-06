@@ -5,24 +5,16 @@ export const dynamic = 'force-dynamic';
 
 import { supabase } from '@/lib/db/supabase-client';
 import { generateInviteCode } from '@/lib/utils/auth';
-import { verifyAdminCode } from '@/lib/utils/admin-auth';
+import { withEventAdmin, createAuthErrorResponse } from '@/lib/utils/auth-middleware';
 
-export async function GET(
+export const GET = withEventAdmin(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: { id: string } },
+  user,
+  role
+) => {
   try {
     const eventId = params.id;
-    const url = new URL(request.url);
-    const adminCode = url.searchParams.get('code');
-
-    // Verify admin access
-    if (!adminCode || !(await verifyAdminCode(eventId, adminCode))) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
 
     // Get all invites for the event
     const { data: eventInvites, error } = await supabase
@@ -46,25 +38,16 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(
+export const POST = withEventAdmin(async (
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  { params }: { params: { id: string } },
+  user,
+  role
+) => {
   try {
     const eventId = params.id;
-    const url = new URL(request.url);
-    const adminCode = url.searchParams.get('code');
-
-    // Verify admin access
-    if (!adminCode || !(await verifyAdminCode(eventId, adminCode))) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { email, inviteType = 'voting' } = body;
 
@@ -125,4 +108,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

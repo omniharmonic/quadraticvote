@@ -329,7 +329,8 @@ export class ProposalService {
    */
   async rejectProposal(
     proposalId: string,
-    reason: string
+    reason: string,
+    adminUserId?: string
   ): Promise<void> {
     const { error } = await supabase
       .from('proposals')
@@ -337,6 +338,7 @@ export class ProposalService {
         status: 'rejected',
         rejected_at: new Date().toISOString(),
         rejection_reason: reason,
+        rejected_by: adminUserId,
       })
       .eq('id', proposalId);
 

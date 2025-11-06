@@ -10,6 +10,16 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   }
 });
 
+// Create service role client for admin operations
+export const createServiceRoleClient = () => {
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+};
+
 // Enhanced database adapter using Supabase
 export const db = {
   // Events operations
