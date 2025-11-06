@@ -3,9 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
-import { db } from '@/lib/db/supabase-client';
-import { invites, events } from '@/lib/db/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { supabase } from '@/lib/db/supabase-client';
 import { generateInviteCode } from '@/lib/utils/auth';
 import { verifyAdminCode } from '@/lib/utils/admin-auth';
 
@@ -27,10 +25,15 @@ export async function GET(
     }
 
     // Get all invites for the event
-    const eventInvites = await db.select()
-      .from(invites)
-      .where(eq(invites.eventId, eventId))
-      .orderBy(desc(invites.createdAt));
+    const { data: eventInvites, error } = await supabase
+      .from('invites')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch invites: ${error.message}`);
+    }
 
     return NextResponse.json({
       success: true,
@@ -73,15 +76,18 @@ export async function POST(
     }
 
     // Check if invite already exists for this email and event
-    const existingInvite = await db.select()
-      .from(invites)
-      .where(and(
-        eq(invites.eventId, eventId),
-        eq(invites.email, email)
-      ))
-      .limit(1);
+    const { data: existingInvite, error: checkError } = await supabase
+      .from('invites')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('email', email)
+      .single();
 
-    if (existingInvite.length > 0) {
+    if (checkError && checkError.code !== 'PGRST116') { // Not found is OK
+      throw new Error(`Failed to check existing invite: ${checkError.message}`);
+    }
+
+    if (existingInvite) {
       return NextResponse.json(
         { error: 'Invite already exists for this email' },
         { status: 400 }
@@ -90,14 +96,22 @@ export async function POST(
 
     // Create new invite
     const inviteData = {
-      eventId,
+      event_id: eventId,
       email,
       code: generateInviteCode(),
-      inviteType: inviteType as 'voting' | 'proposal_submission' | 'both',
-      sentAt: new Date(),
+      invite_type: inviteType as 'voting' | 'proposal_submission' | 'both',
+      sent_at: new Date().toISOString(),
     };
 
-    const [newInvite] = await db.insert(invites).values(inviteData).returning();
+    const { data: newInvite, error: createError } = await supabase
+      .from('invites')
+      .insert(inviteData)
+      .select()
+      .single();
+
+    if (createError) {
+      throw new Error(`Failed to create invite: ${createError.message}`);
+    }
 
     return NextResponse.json({
       success: true,
