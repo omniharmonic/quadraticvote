@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
-import { supabase } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/supabase';
 
 // Fixed import path to resolve webpack caching issue
 export async function GET(

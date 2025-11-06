@@ -5,7 +5,7 @@ import { useEffect, useState, Suspense } from 'react';
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/supabase';
 
 function AuthCallbackContent() {
   const router = useRouter();

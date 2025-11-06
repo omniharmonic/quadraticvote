@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/supabase';
 import { generateInviteCode } from '@/lib/utils/auth';
 import { adminService } from '@/lib/services/admin.service';
 import type { CreateEventInput } from '@/lib/validators/index';

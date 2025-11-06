@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '@/lib/services/auth.service';
 import { adminService } from '@/lib/services/admin.service';
-import { supabase } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {

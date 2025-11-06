@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/supabase';
 import { withEventAdmin } from '@/lib/utils/auth-middleware';
 
 // Force this route to be dynamic (not pre-rendered during build)

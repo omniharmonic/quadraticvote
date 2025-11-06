@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Verify admin code for an event

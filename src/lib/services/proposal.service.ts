@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/supabase';
 import { hashString } from '@/lib/utils/auth';
 import type { Proposal } from '@/lib/types';
 

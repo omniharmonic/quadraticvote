@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/db/supabase-client';
+import { supabase } from '@/lib/supabase';
 import { aggregateVotes } from '@/lib/utils/quadratic';
 import type {
   EventResults,

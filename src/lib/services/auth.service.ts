@@ -1,4 +1,4 @@
-import { supabase, createServiceRoleClient } from '@/lib/db/supabase-client';
+import { supabase, createServiceRoleClient } from '@/lib/supabase';
 import { generateInviteCode } from '@/lib/utils/auth';
 import type { User } from '@supabase/supabase-js';
 
