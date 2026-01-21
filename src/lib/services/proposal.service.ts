@@ -80,91 +80,52 @@ export class ProposalService {
    * Check if proposals are currently open
    */
   private areProposalsOpen(event: any): boolean {
-    console.log('DEBUG: Checking if proposals are open for event:', {
-      eventId: event.id,
-      optionMode: event.optionMode,
-      proposalConfig: event.proposalConfig,
-      startTime: event.startTime,
-      endTime: event.endTime
-    });
-
     if (event.optionMode === 'admin_defined') {
-      console.log('DEBUG: Proposals blocked - admin_defined mode');
       return false;
     }
 
     // Check if proposalConfig exists and is properly configured
     if (!event.proposalConfig) {
-      console.log('DEBUG: Proposals blocked - no proposalConfig found');
       return false;
     }
 
     // If enabled is explicitly false, block proposals
     if (event.proposalConfig.enabled === false) {
-      console.log('DEBUG: Proposals blocked - explicitly disabled in config');
       return false;
     }
 
     const now = new Date();
-    console.log('DEBUG: Current time:', now.toISOString());
 
     // Support both camelCase and snake_case for backwards compatibility
     const submissionStart = event.proposalConfig.submissionStart || event.proposalConfig.submission_start;
     const submissionEnd = event.proposalConfig.submissionEnd || event.proposalConfig.submission_end;
 
-    console.log('DEBUG: Submission window from config:', {
-      submissionStart,
-      submissionEnd,
-      hasSubmissionWindow: !!(submissionStart && submissionEnd),
-      configKeys: Object.keys(event.proposalConfig || {})
-    });
-
     if (!submissionStart || !submissionEnd) {
       // If no submission window specified, allow submissions during event time
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
-      const isWithinEventTime = now >= eventStart && now <= eventEnd;
-
-      console.log('DEBUG: No submission window, checking event time:', {
-        eventStart: eventStart.toISOString(),
-        eventEnd: eventEnd.toISOString(),
-        isWithinEventTime
-      });
-
-      return isWithinEventTime;
-    }
-
-    // Parse submission window with proper timezone handling
-    let startTime, endTime;
-    try {
-      startTime = new Date(submissionStart);
-      endTime = new Date(submissionEnd);
-
-      // Validate dates are valid
-      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-        console.log('DEBUG: Invalid submission dates, falling back to event time');
-        const eventStart = new Date(event.startTime);
-        const eventEnd = new Date(event.endTime);
-        return now >= eventStart && now <= eventEnd;
-      }
-    } catch (error) {
-      console.log('DEBUG: Error parsing submission dates:', error);
-      // Fall back to event time window
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
       return now >= eventStart && now <= eventEnd;
     }
 
-    const isWithinSubmissionWindow = now >= startTime && now <= endTime;
+    // Parse submission window with proper timezone handling
+    try {
+      const startTime = new Date(submissionStart);
+      const endTime = new Date(submissionEnd);
 
-    console.log('DEBUG: Checking submission window:', {
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      isWithinSubmissionWindow,
-      nowIsoString: now.toISOString()
-    });
+      // Validate dates are valid
+      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        const eventStart = new Date(event.startTime);
+        const eventEnd = new Date(event.endTime);
+        return now >= eventStart && now <= eventEnd;
+      }
 
-    return isWithinSubmissionWindow;
+      return now >= startTime && now <= endTime;
+    } catch {
+      // Fall back to event time window
+      const eventStart = new Date(event.startTime);
+      const eventEnd = new Date(event.endTime);
+      return now >= eventStart && now <= eventEnd;
+    }
   }
   
   /**

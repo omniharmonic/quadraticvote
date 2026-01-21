@@ -12,12 +12,6 @@ export const dynamic = 'force-dynamic';
  * Create a new event
  */
 export const POST = withAuth(async (request: NextRequest, context, user) => {
-  console.log('=== EVENT CREATION API CALLED ===');
-  console.log('Environment check:', {
-    DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Missing',
-    NODE_ENV: process.env.NODE_ENV,
-  });
-
   try {
     // Rate limiting - temporarily disabled for debugging
     try {
@@ -42,12 +36,9 @@ export const POST = withAuth(async (request: NextRequest, context, user) => {
 
     // Parse and validate request body
     const body = await request.json();
-    console.log('Event creation request body:', JSON.stringify(body, null, 2));
-
     const validationResult = createEventSchema.safeParse(body);
 
     if (!validationResult.success) {
-      console.log('Validation failed:', validationResult.error.format());
       return NextResponse.json(
         {
           error: 'Validation failed',
@@ -56,8 +47,6 @@ export const POST = withAuth(async (request: NextRequest, context, user) => {
         { status: 400 }
       );
     }
-
-    console.log('Validated data:', JSON.stringify(validationResult.data, null, 2));
 
     // Create event with fallback for visibility and proposalConfig
     const eventData = {
@@ -80,9 +69,7 @@ export const POST = withAuth(async (request: NextRequest, context, user) => {
       }
     };
 
-    console.log('About to call eventService.createEvent with:', JSON.stringify(eventData, null, 2));
     const event = await eventService.createEvent(eventData, user.id);
-    console.log('Event created successfully:', event.id);
 
     // Return success response
     return NextResponse.json(
@@ -96,13 +83,7 @@ export const POST = withAuth(async (request: NextRequest, context, user) => {
       { status: 201 }
     );
   } catch (error) {
-    console.error('=== EVENT CREATION ERROR ===');
-    console.error('Error type:', typeof error);
-    console.error('Error name:', error instanceof Error ? error.name : 'Unknown');
-    console.error('Error message:', error instanceof Error ? error.message : String(error));
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
-    console.error('Full error object:', error);
-
+    console.error('Event creation error:', error);
     return NextResponse.json(
       {
         error: 'Failed to create event',

@@ -53,14 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Handle different auth events
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('User signed in:', session.user.email);
-        } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out');
-        } else if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed');
-        }
+        // Auth events are handled automatically by state updates
       }
     );
 

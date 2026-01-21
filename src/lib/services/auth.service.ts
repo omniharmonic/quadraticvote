@@ -6,13 +6,16 @@ export class AuthService {
   /**
    * Sign up a new user
    */
-  async signUp(email: string, password: string): Promise<{ user: User | null; error: Error | null }> {
+  async signUp(email: string, password: string, redirectUrl?: string): Promise<{ user: User | null; error: Error | null }> {
     try {
+      // Use provided redirectUrl, env variable, or fallback
+      const baseUrl = redirectUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: `${baseUrl}/auth/callback`
         }
       });
 
@@ -115,10 +118,13 @@ export class AuthService {
   /**
    * Reset password
    */
-  async resetPassword(email: string): Promise<{ error: Error | null }> {
+  async resetPassword(email: string, redirectUrl?: string): Promise<{ error: Error | null }> {
     try {
+      // Use provided redirectUrl, env variable, or fallback
+      const baseUrl = redirectUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`
+        redirectTo: `${baseUrl}/auth/reset-password`
       });
 
       if (error) {

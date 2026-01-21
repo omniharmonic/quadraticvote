@@ -202,8 +202,8 @@ export class ResultService {
     let distributions: Distribution[] = eventOptions.map(opt => {
       const voteCount = voteTotals[opt.id] || 0;
       const percentage = voteCount / totalVotes;
-      let allocation = percentage * config.total_pool_amount;
-      
+      const allocation = percentage * config.total_pool_amount;
+
       return {
         option_id: opt.id,
         title: opt.title,

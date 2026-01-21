@@ -63,13 +63,18 @@ export class VoteService {
     
     // 6. Update invite tracking (skip for virtual invites)
     if (!invite.isVirtual) {
-      await supabase
+      const { error: trackingError } = await supabase
         .from('invites')
         .update({
           vote_submitted_at: new Date().toISOString(),
           used_at: new Date().toISOString(),
         })
-        .eq('code', inviteCode);
+        .eq('code', finalInviteCode);
+
+      if (trackingError) {
+        console.error('Failed to update invite tracking:', trackingError);
+        // Don't fail the vote for tracking errors
+      }
     }
     
     // 7. Skip cache invalidation (Redis removed)

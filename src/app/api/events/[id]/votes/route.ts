@@ -39,13 +39,9 @@ export async function POST(
 
     // Parse and validate request body
     const body = await request.json();
-    console.log('Vote submission request body:', JSON.stringify(body, null, 2));
-    console.log('Event ID from params:', params.id);
-
     const validationResult = submitVoteSchema.safeParse(body);
 
     if (!validationResult.success) {
-      console.log('Vote validation failed:', validationResult.error.format());
       return NextResponse.json(
         {
           error: 'Validation failed',
@@ -54,8 +50,6 @@ export async function POST(
         { status: 400 }
       );
     }
-
-    console.log('Vote validated data:', JSON.stringify(validationResult.data, null, 2));
 
     // Submit vote
     const vote = await voteService.submitVote(
@@ -72,8 +66,8 @@ export async function POST(
       success: true,
       vote: {
         id: vote.id,
-        receipt_code: vote.inviteCode, // For returning to edit
-        submitted_at: vote.submittedAt,
+        receipt_code: vote.invite_code,
+        submitted_at: vote.submitted_at,
       },
     });
   } catch (error) {
