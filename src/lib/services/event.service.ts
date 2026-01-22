@@ -12,12 +12,6 @@ export class EventService {
     // Validate decision framework
     this.validateDecisionFramework(input.decisionFramework);
 
-    console.log('DEBUG EventService.createEvent input:', {
-      proposalConfig: input.proposalConfig,
-      optionMode: input.optionMode,
-      title: input.title
-    });
-
     // 1. Insert event
     const eventData = {
       title: input.title,
@@ -40,11 +34,6 @@ export class EventService {
       created_by: userId ? userId : null,
     };
 
-    console.log('DEBUG EventService.createEvent about to insert:', {
-      proposalConfig: eventData.proposal_config,
-      optionMode: eventData.option_mode
-    });
-
     const { data: event, error: eventError } = await supabase
       .from('events')
       .insert(eventData)
@@ -54,12 +43,6 @@ export class EventService {
     if (eventError) {
       throw new Error(`Failed to create event: ${eventError.message}`);
     }
-
-    console.log('DEBUG EventService.createEvent after insert:', {
-      eventId: event.id,
-      proposalConfig: event.proposal_config,
-      optionMode: event.option_mode
-    });
 
     // 2. If admin-defined options, insert them
     if (input.optionMode !== 'community_proposals' && input.initialOptions && input.initialOptions.length > 0) {
@@ -222,7 +205,8 @@ export class EventService {
     
     const config = event.proposalConfig;
     if (!config || !config.enabled) return false;
-    
+    if (!config.submission_start || !config.submission_end) return false;
+
     const now = new Date();
     return now >= new Date(config.submission_start) && now <= new Date(config.submission_end);
   }
