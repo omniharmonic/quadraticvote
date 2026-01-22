@@ -91,14 +91,42 @@ If authentication doesn't work after deployment:
 - Check that both anon key and service role key are correctly configured
 - Ensure auth callbacks are properly configured
 
+## Fix Auth Redirect URLs (CRITICAL)
+
+**Issue**: Email confirmation links redirect to localhost:3000 instead of production
+
+**Solution**: Update Supabase Auth Configuration
+
+1. **Go to Supabase Dashboard**:
+   - Navigate to https://supabase.com/dashboard
+   - Select your project
+   - Go to Authentication > URL Configuration
+
+2. **Update Site URL**:
+   ```
+   From: http://localhost:3000
+   To: https://your-vercel-app.vercel.app
+   ```
+
+3. **Update Redirect URLs** (add both):
+   ```
+   Production: https://your-vercel-app.vercel.app/auth/callback
+   Development: http://localhost:3000/auth/callback
+   ```
+
+4. **Save Configuration**
+
+Note: The redirect URLs must be configured in your Supabase dashboard for email confirmations to work correctly in production.
+
 ## Verification Steps
 
 After deployment:
 1. Test user registration and login
-2. Verify admin authentication works
-3. Check that event creation/management functions
-4. Test voting and results display
-5. Confirm all API routes respond correctly
+2. Verify email confirmation links go to production domain
+3. Verify admin authentication works
+4. Check that event creation/management functions
+5. Test voting and results display
+6. Confirm all API routes respond correctly
 
 ## Security Notes
 
