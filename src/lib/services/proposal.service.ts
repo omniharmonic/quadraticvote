@@ -2,6 +2,32 @@ import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase';
 
 const supabase = createServiceRoleClient();
+
+function mapProposalRow(row: any): any {
+  if (!row) return row;
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    title: row.title,
+    description: row.description,
+    imageUrl: row.image_url,
+    submitterEmail: row.submitter_email,
+    submitterWallet: row.submitter_wallet,
+    payoutWallet: row.payout_wallet,
+    submitterAnonymousId: row.submitter_anonymous_id,
+    status: row.status,
+    submittedAt: row.submitted_at,
+    approvedAt: row.approved_at,
+    approvedBy: row.approved_by,
+    rejectedAt: row.rejected_at,
+    rejectedBy: row.rejected_by,
+    rejectionReason: row.rejection_reason,
+    convertedToOptionId: row.converted_to_option_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    event: row.event,
+  };
+}
 import { hashString } from '@/lib/utils/auth';
 import type { Proposal } from '@/lib/types';
 
@@ -228,10 +254,10 @@ export class ProposalService {
   async getProposalsByEventId(
     eventId: string,
     status?: string
-  ): Promise<Proposal[]> {
+  ): Promise<any[]> {
     let query = supabase
       .from('proposals')
-      .select('*')
+      .select('*, event:events(title)')
       .eq('event_id', eventId);
 
     if (status) {
@@ -239,33 +265,25 @@ export class ProposalService {
     }
 
     const { data: result, error } = await query.order('submitted_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch proposals: ${error.message}`);
-    }
-
-    return result as Proposal[];
+    if (error) throw new Error(`Failed to fetch proposals: ${error.message}`);
+    return (result || []).map(mapProposalRow);
   }
 
   /**
    * Get all proposals across all events (for admin)
    */
-  async getAllProposals(status?: string): Promise<Proposal[]> {
+  async getAllProposals(status?: string): Promise<any[]> {
     let query = supabase
       .from('proposals')
-      .select('*');
+      .select('*, event:events(title)');
 
     if (status) {
       query = query.eq('status', status);
     }
 
     const { data: result, error } = await query.order('submitted_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch proposals: ${error.message}`);
-    }
-
-    return result as Proposal[];
+    if (error) throw new Error(`Failed to fetch proposals: ${error.message}`);
+    return (result || []).map(mapProposalRow);
   }
   
   /**
