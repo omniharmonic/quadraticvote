@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
 import { proposalService } from '@/lib/services/proposal.service';
-import { withAuth } from '@/lib/utils/auth-middleware';
+import { withProposalAdmin } from '@/lib/utils/auth-middleware';
+import { createServiceRoleClient } from '@/lib/supabase';
 
 /**
  * POST /api/proposals/[id]/approve
- * Approve a specific proposal
+ * Approve a specific proposal. Caller must be admin of the proposal's event.
  */
-export const POST = withAuth(async (
+export const POST = withProposalAdmin(async (
   request: NextRequest,
   { params }: { params: { id: string } },
   user
@@ -18,23 +18,24 @@ export const POST = withAuth(async (
   try {
     const proposalId = params.id;
 
-    if (!proposalId) {
-      return NextResponse.json(
-        { success: false, error: 'Proposal ID is required' },
-        { status: 400 }
-      );
-    }
+    // Resolve auth user → users.id for the approved_by foreign key
+    const supabase = createServiceRoleClient();
+    const { data: userRecord } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
 
-    await proposalService.approveProposal(proposalId, user.id);
+    const userId = userRecord?.id ?? null;
+
+    await proposalService.approveProposal(proposalId, userId);
 
     return NextResponse.json({
       success: true,
-      message: 'Proposal approved successfully'
+      message: 'Proposal approved successfully',
     });
-
   } catch (error) {
     console.error('Error approving proposal:', error);
-
     return NextResponse.json(
       {
         success: false,

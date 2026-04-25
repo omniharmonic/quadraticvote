@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
-import { supabase } from '@/lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase';
+import { withEventAdmin } from '@/lib/utils/auth-middleware';
 
-// Fixed import path to resolve webpack caching issue
-export async function GET(
+export const GET = withEventAdmin(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
+  const supabase = createServiceRoleClient();
   try {
     const eventId = params.id;
     const { searchParams } = new URL(request.url);
@@ -117,9 +117,8 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+});
 
-// Helper functions to calculate statistics in JavaScript
 function calculateVotingStats(votes: any[]) {
   if (votes.length === 0) {
     return {

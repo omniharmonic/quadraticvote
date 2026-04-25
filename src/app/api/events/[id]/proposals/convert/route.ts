@@ -1,40 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
 import { proposalService } from '@/lib/services/proposal.service';
+import { withEventAdmin } from '@/lib/utils/auth-middleware';
 
 /**
  * POST /api/events/[id]/proposals/convert
- * Convert all approved proposals to voting options for an event
+ * Convert all approved proposals to voting options for an event.
+ * Caller must be an admin of the event.
  */
-export async function POST(
+export const POST = withEventAdmin(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
-    const eventId = params.id;
-
-    if (!eventId) {
-      return NextResponse.json(
-        { success: false, error: 'Event ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Convert approved proposals to options
-    const convertedCount = await proposalService.convertProposalsToOptions(eventId);
-
+    const convertedCount = await proposalService.convertProposalsToOptions(params.id);
     return NextResponse.json({
       success: true,
       message: `Successfully converted ${convertedCount} proposals to voting options`,
-      convertedCount
+      convertedCount,
     });
-
   } catch (error) {
     console.error('Error converting proposals:', error);
-
     return NextResponse.json(
       {
         success: false,
@@ -44,4 +32,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

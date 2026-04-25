@@ -1,4 +1,6 @@
-import { supabase } from '@/lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase';
+
+const supabase = createServiceRoleClient();
 import { aggregateVotes } from '@/lib/utils/quadratic';
 import type {
   EventResults,
@@ -51,9 +53,9 @@ export class ResultService {
     // 3. Aggregate quadratic votes
     const voteTotals = aggregateVotes((allVotes || []).map(v => ({ allocations: v.allocations as Record<string, number> })));
     
-    // 4. Calculate results based on framework
-    const framework = (event.decisionFramework as any).framework_type;
-    const config = (event.decisionFramework as any).config;
+    // 4. Calculate results based on framework (field is snake_case in DB)
+    const framework = (event.decision_framework as any)?.framework_type;
+    const config = (event.decision_framework as any)?.config;
     
     let frameworkResults: BinaryResults | ProportionalResults;
     
@@ -81,8 +83,8 @@ export class ResultService {
       participation: {
         total_voters: (allVotes || []).length,
         total_credits_allocated: (allVotes || []).reduce((sum, v) => sum + v.total_credits_used, 0),
-        voting_start: event.startTime,
-        voting_end: event.endTime,
+        voting_start: event.start_time,
+        voting_end: event.end_time,
         is_final: this.isEventClosed(event),
       },
       calculated_at: new Date(),
@@ -277,7 +279,7 @@ export class ResultService {
    * Check if event is closed
    */
   private isEventClosed(event: any): boolean {
-    return new Date() > new Date(event.endTime);
+    return new Date() > new Date(event.end_time);
   }
   
   /**

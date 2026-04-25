@@ -1,59 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
 import { proposalService } from '@/lib/services/proposal.service';
-import { withAuth } from '@/lib/utils/auth-middleware';
+import { withProposalAdmin } from '@/lib/utils/auth-middleware';
+import { createServiceRoleClient } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
-const createHandleRejection = (user: any) => async (
+async function handleRejection(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) => {
+  params: { id: string },
+  user: User
+) {
   try {
     const proposalId = params.id;
     const { reason } = await request.json();
 
     if (!reason || !reason.trim()) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Rejection reason is required'
-        },
+        { success: false, error: 'Rejection reason is required' },
         { status: 400 }
       );
     }
 
-    await proposalService.rejectProposal(proposalId, reason, user.id);
+    const supabase = createServiceRoleClient();
+    const { data: userRecord } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
+
+    await proposalService.rejectProposal(proposalId, reason, userRecord?.id);
 
     return NextResponse.json({
       success: true,
-      message: 'Proposal rejected successfully'
+      message: 'Proposal rejected successfully',
     });
   } catch (error) {
     console.error('Error rejecting proposal:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to reject proposal'
+        error: error instanceof Error ? error.message : 'Failed to reject proposal',
       },
       { status: 500 }
     );
   }
 }
 
-export const PATCH = withAuth(async (
-  request: NextRequest,
-  { params }: { params: { id: string } },
-  user
-) => {
-  return createHandleRejection(user)(request, { params });
-});
+export const PATCH = withProposalAdmin(async (request, { params }, user) =>
+  handleRejection(request, params, user)
+);
 
-export const POST = withAuth(async (
-  request: NextRequest,
-  { params }: { params: { id: string } },
-  user
-) => {
-  return createHandleRejection(user)(request, { params });
-});
+export const POST = withProposalAdmin(async (request, { params }, user) =>
+  handleRejection(request, params, user)
+);

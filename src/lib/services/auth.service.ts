@@ -23,10 +23,8 @@ export class AuthService {
         return { user: null, error: new Error(error.message) };
       }
 
-      // Create user record in our database if signup successful
-      if (data.user && !error) {
-        await this.createUserRecord(data.user);
-      }
+      // The `handle_new_user` Postgres trigger creates the public.users row
+      // (auth_id + email) on auth.users insert; no client-side insert needed.
 
       return { user: data.user, error: null };
     } catch (error) {
@@ -90,29 +88,6 @@ export class AuthService {
   async getSession() {
     const { data: { session } } = await supabase.auth.getSession();
     return session;
-  }
-
-  /**
-   * Create user record in our database
-   */
-  private async createUserRecord(user: User): Promise<void> {
-    try {
-      const serviceRoleClient = createServiceRoleClient();
-
-      const { error } = await serviceRoleClient
-        .from('users')
-        .insert({
-          id: user.id,
-          email: user.email!,
-          email_verified: !!user.email_confirmed_at,
-        });
-
-      if (error && error.code !== '23505') { // Ignore duplicate key error
-        console.error('Error creating user record:', error);
-      }
-    } catch (error) {
-      console.error('Error creating user record:', error);
-    }
   }
 
   /**
