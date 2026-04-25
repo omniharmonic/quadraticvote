@@ -3,13 +3,28 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 import { createServiceRoleClient } from '@/lib/supabase';
-import { withEventAdmin } from '@/lib/utils/auth-middleware';
+import { adminService } from '@/lib/services/admin.service';
+import { extractToken } from '@/lib/utils/auth-middleware';
 
-export const GET = withEventAdmin(async (
+/**
+ * Aggregate stats are public; per-voter records (individual_votes) are
+ * admin-only. We resolve the caller's admin status from the JWT (if any)
+ * and conditionally include sensitive fields.
+ */
+export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
-) => {
+) {
   const supabase = createServiceRoleClient();
+
+  // Try to resolve admin status (optional auth)
+  let isAdmin = false;
+  const token = extractToken(request);
+  if (token) {
+    const result = await adminService.verifyEventAccess(token, params.id);
+    isAdmin = result.isAuthorized;
+  }
+
   try {
     const eventId = params.id;
     const { searchParams } = new URL(request.url);
@@ -93,14 +108,19 @@ export const GET = withEventAdmin(async (
       // New advanced analytics data
       network_graph: networkData,
       cluster_analysis: clusterAnalysis,
-      individual_votes: (allVotes || []).map(vote => ({
-        id: vote.id,
-        voter_id: vote.invite_code,
-        allocations: vote.allocations,
-        total_credits: vote.total_credits_used,
-        timestamp: vote.submitted_at,
-        ip_hash: vote.ip_address ? hashString(vote.ip_address) : null
-      }))
+      // Per-voter records leak voter identity (invite_code, IP hash) and
+      // are only returned to event admins.
+      individual_votes: isAdmin
+        ? (allVotes || []).map(vote => ({
+            id: vote.id,
+            voter_id: vote.invite_code,
+            allocations: vote.allocations,
+            total_credits: vote.total_credits_used,
+            timestamp: vote.submitted_at,
+            ip_hash: vote.ip_address ? hashString(vote.ip_address) : null,
+          }))
+        : [],
+      is_admin_view: isAdmin,
     };
 
     return NextResponse.json({
@@ -117,7 +137,7 @@ export const GET = withEventAdmin(async (
       { status: 500 }
     );
   }
-});
+}
 
 function calculateVotingStats(votes: any[]) {
   if (votes.length === 0) {
