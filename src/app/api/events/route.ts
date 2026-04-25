@@ -3,6 +3,7 @@ import { eventService } from '@/lib/services/event.service';
 import { createEventSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 import { withAuth } from '@/lib/utils/auth-middleware';
+import { createServiceRoleClient } from '@/lib/supabase';
 
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
@@ -69,7 +70,17 @@ export const POST = withAuth(async (request: NextRequest, context, user) => {
       }
     };
 
-    const event = await eventService.createEvent(eventData, user.id);
+    // Look up the actual user record by auth_id to get the correct ID for the foreign key
+    const supabase = createServiceRoleClient();
+    const { data: userRecord } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
+
+    const userId = userRecord?.id || user.id; // Fallback to auth ID if no user record found
+
+    const event = await eventService.createEvent(eventData, userId);
 
     // Return success response
     return NextResponse.json(

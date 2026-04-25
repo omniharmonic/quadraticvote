@@ -3,8 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
-import { supabase } from '@/lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase';
 import { generateInviteCode } from '@/lib/utils/auth';
+
+const supabase = createServiceRoleClient();
 import { withEventAdmin, createAuthErrorResponse } from '@/lib/utils/auth-middleware';
 
 export const GET = withEventAdmin(async (

@@ -1,4 +1,6 @@
-import { supabase, createServiceRoleClient } from '@/lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase';
+
+const supabase = createServiceRoleClient();
 import { generateInviteCode } from '@/lib/utils/auth';
 import type { User } from '@supabase/supabase-js';
 import type { EventAdmin, AdminInvitation, NewEventAdmin, NewAdminInvitation } from '@/lib/db/auth-schema';
@@ -365,13 +367,22 @@ export class AdminService {
         return { isAuthorized: false, error: 'Invalid authentication token' };
       }
 
-      // Check admin status
-      const isAdmin = await this.isEventAdmin(user.id, eventId);
+      // First, look up the database user ID from auth ID
+      const { data: userRecord } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_id', user.id)
+        .single();
+
+      const userId = userRecord?.id || user.id;
+
+      // Check admin status with the correct user ID
+      const isAdmin = await this.isEventAdmin(userId, eventId);
       if (!isAdmin) {
         return { isAuthorized: false, error: 'Not authorized to access this event' };
       }
 
-      const role = await this.getAdminRole(user.id, eventId);
+      const role = await this.getAdminRole(userId, eventId);
 
       return {
         isAuthorized: true,

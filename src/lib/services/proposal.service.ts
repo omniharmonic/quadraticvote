@@ -1,4 +1,6 @@
-import { supabase } from '@/lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase';
+
+const supabase = createServiceRoleClient();
 import { hashString } from '@/lib/utils/auth';
 import type { Proposal } from '@/lib/types';
 
@@ -26,8 +28,9 @@ export class ProposalService {
     if (eventError || !event) throw new Error('Event not found');
     if (!this.areProposalsOpen(event)) throw new Error('Proposal submission is closed');
     
-    // 2. Validate submitter authorization if needed
-    if ((event.proposalConfig as any)?.access_control === 'invite_only') {
+    // 2. Validate submitter authorization if needed (snake_case from DB)
+    const proposalConfig = event.proposal_config || event.proposalConfig;
+    if ((proposalConfig as any)?.access_control === 'invite_only') {
       if (!input.inviteCode) throw new Error('Invite code required');
       await this.validateSubmitter(event.id, input.submitterEmail, input.inviteCode);
     }
@@ -36,7 +39,7 @@ export class ProposalService {
     const anonymousId = hashString(input.submitterEmail);
     
     // 4. Determine initial status based on moderation mode
-    const initialStatus = this.getInitialStatus(event.proposalConfig);
+    const initialStatus = this.getInitialStatus(proposalConfig);
     
     // 5. Insert proposal
     const { data: proposal, error: insertError } = await supabase
@@ -80,30 +83,33 @@ export class ProposalService {
    * Check if proposals are currently open
    */
   private areProposalsOpen(event: any): boolean {
-    if (event.optionMode === 'admin_defined') {
+    // Support snake_case field names from database
+    const optionMode = event.option_mode || event.optionMode;
+    if (optionMode === 'admin_defined') {
       return false;
     }
 
-    // Check if proposalConfig exists and is properly configured
-    if (!event.proposalConfig) {
+    // Check if proposalConfig exists and is properly configured (snake_case from DB)
+    const proposalConfig = event.proposal_config || event.proposalConfig;
+    if (!proposalConfig) {
       return false;
     }
 
     // If enabled is explicitly false, block proposals
-    if (event.proposalConfig.enabled === false) {
+    if (proposalConfig.enabled === false) {
       return false;
     }
 
     const now = new Date();
 
     // Support both camelCase and snake_case for backwards compatibility
-    const submissionStart = event.proposalConfig.submissionStart || event.proposalConfig.submission_start;
-    const submissionEnd = event.proposalConfig.submissionEnd || event.proposalConfig.submission_end;
+    const submissionStart = proposalConfig.submissionStart || proposalConfig.submission_start;
+    const submissionEnd = proposalConfig.submissionEnd || proposalConfig.submission_end;
 
     if (!submissionStart || !submissionEnd) {
-      // If no submission window specified, allow submissions during event time
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
+      // If no submission window specified, allow submissions during event time (snake_case from DB)
+      const eventStart = new Date(event.start_time || event.startTime);
+      const eventEnd = new Date(event.end_time || event.endTime);
       return now >= eventStart && now <= eventEnd;
     }
 
@@ -114,16 +120,16 @@ export class ProposalService {
 
       // Validate dates are valid
       if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
-        const eventStart = new Date(event.startTime);
-        const eventEnd = new Date(event.endTime);
+        const eventStart = new Date(event.start_time || event.startTime);
+        const eventEnd = new Date(event.end_time || event.endTime);
         return now >= eventStart && now <= eventEnd;
       }
 
       return now >= startTime && now <= endTime;
     } catch {
       // Fall back to event time window
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
+      const eventStart = new Date(event.start_time || event.startTime);
+      const eventEnd = new Date(event.end_time || event.endTime);
       return now >= eventStart && now <= eventEnd;
     }
   }

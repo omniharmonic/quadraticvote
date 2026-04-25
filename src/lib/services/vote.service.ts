@@ -1,4 +1,6 @@
-import { supabase } from '@/lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase';
+
+const supabase = createServiceRoleClient();
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
 import type { Vote } from '@/lib/types';
 
@@ -136,7 +138,8 @@ export class VoteService {
    */
   private isVotingOpen(event: any): boolean {
     const now = new Date();
-    return now >= new Date(event.startTime) && now <= new Date(event.endTime);
+    // Database fields use snake_case
+    return now >= new Date(event.start_time) && now <= new Date(event.end_time);
   }
   
   /**

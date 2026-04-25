@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createServiceRoleClient } from '@/lib/supabase';
+
+const supabase = createServiceRoleClient();
 import { withEventAdmin } from '@/lib/utils/auth-middleware';
 
 // Force this route to be dynamic (not pre-rendered during build)
