@@ -1,77 +1,47 @@
-import { supabase, createServiceRoleClient } from '@/lib/supabase';
-import { generateInviteCode } from '@/lib/utils/auth';
+import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
+/**
+ * Browser-safe wrapper around Supabase Auth.
+ * No service-role calls — safe to import from client components.
+ */
 export class AuthService {
-  /**
-   * Sign up a new user
-   */
-  async signUp(email: string, password: string, redirectUrl?: string): Promise<{ user: User | null; error: Error | null }> {
+  async signUp(email: string, password: string, redirectUrl?: string) {
     try {
-      // Use provided redirectUrl, env variable, or fallback
       const baseUrl = redirectUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: `${baseUrl}/auth/callback`
-        }
+        options: { emailRedirectTo: `${baseUrl}/auth/callback` },
       });
-
-      if (error) {
-        return { user: null, error: new Error(error.message) };
-      }
-
-      // The `handle_new_user` Postgres trigger creates the public.users row
-      // (auth_id + email) on auth.users insert; no client-side insert needed.
-
+      if (error) return { user: null, error: new Error(error.message) };
+      // The `handle_new_user` Postgres trigger creates the public.users row.
       return { user: data.user, error: null };
     } catch (error) {
       return { user: null, error: error as Error };
     }
   }
 
-  /**
-   * Sign in user
-   */
-  async signIn(email: string, password: string): Promise<{ user: User | null; error: Error | null }> {
+  async signIn(email: string, password: string) {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) {
-        return { user: null, error: new Error(error.message) };
-      }
-
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { user: null, error: new Error(error.message) };
       return { user: data.user, error: null };
     } catch (error) {
       return { user: null, error: error as Error };
     }
   }
 
-  /**
-   * Sign out user
-   */
-  async signOut(): Promise<{ error: Error | null }> {
+  async signOut() {
     try {
       const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        return { error: new Error(error.message) };
-      }
-
+      if (error) return { error: new Error(error.message) };
       return { error: null };
     } catch (error) {
       return { error: error as Error };
     }
   }
 
-  /**
-   * Get current user
-   */
   async getCurrentUser(): Promise<User | null> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -82,70 +52,31 @@ export class AuthService {
     }
   }
 
-  /**
-   * Get user session
-   */
   async getSession() {
     const { data: { session } } = await supabase.auth.getSession();
     return session;
   }
 
-  /**
-   * Reset password
-   */
-  async resetPassword(email: string, redirectUrl?: string): Promise<{ error: Error | null }> {
+  async resetPassword(email: string, redirectUrl?: string) {
     try {
-      // Use provided redirectUrl, env variable, or fallback
       const baseUrl = redirectUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${baseUrl}/auth/reset-password`
+        redirectTo: `${baseUrl}/auth/reset-password`,
       });
-
-      if (error) {
-        return { error: new Error(error.message) };
-      }
-
+      if (error) return { error: new Error(error.message) };
       return { error: null };
     } catch (error) {
       return { error: error as Error };
     }
   }
 
-  /**
-   * Update password
-   */
-  async updatePassword(password: string): Promise<{ error: Error | null }> {
+  async updatePassword(password: string) {
     try {
-      const { error } = await supabase.auth.updateUser({
-        password
-      });
-
-      if (error) {
-        return { error: new Error(error.message) };
-      }
-
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return { error: new Error(error.message) };
       return { error: null };
     } catch (error) {
       return { error: error as Error };
-    }
-  }
-
-  /**
-   * Server-side: Verify JWT token and get user
-   */
-  async verifyToken(token: string): Promise<{ user: User | null; error: Error | null }> {
-    try {
-      const serviceRoleClient = createServiceRoleClient();
-      const { data, error } = await serviceRoleClient.auth.getUser(token);
-
-      if (error) {
-        return { user: null, error: new Error(error.message) };
-      }
-
-      return { user: data.user, error: null };
-    } catch (error) {
-      return { user: null, error: error as Error };
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'server-only';
 import { NextRequest } from 'next/server';
 import { adminService } from '@/lib/services/admin.service';
 import { createServiceRoleClient } from '@/lib/supabase';

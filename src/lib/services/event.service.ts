@@ -1,3 +1,4 @@
+import 'server-only';
 import { createServiceRoleClient } from '@/lib/supabase';
 import { generateInviteCode } from '@/lib/utils/auth';
 import { adminService } from '@/lib/services/admin.service';

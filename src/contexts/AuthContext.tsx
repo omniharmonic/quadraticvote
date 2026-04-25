@@ -2,41 +2,44 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '@/lib/services/auth.service';
-import { adminService } from '@/lib/services/admin.service';
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
-  // User state
   user: User | null;
   session: Session | null;
   loading: boolean;
-
-  // Authentication methods
   signUp: (email: string, password: string) => Promise<{ user: User | null; error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ user: User | null; error: Error | null }>;
   signOut: () => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
-
-  // Admin methods
   isEventAdmin: (eventId: string) => Promise<boolean>;
   getAdminRole: (eventId: string) => Promise<string | null>;
-  getUserAdminEvents: () => Promise<any[]>;
-
-  // Utility methods
+  getUserAdminEvents: () => Promise<Array<{ event: any; role: string }>>;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/**
+ * Resolve the current authenticated user's public.users.id from their auth_id.
+ * Relies on the `users_self_read` RLS policy.
+ */
+async function resolveOwnUserId(authUid: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('users')
+    .select('id')
+    .eq('auth_id', authUid)
+    .maybeSingle();
+  return data?.id ?? null;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize auth state
   useEffect(() => {
-    // Get initial session
     const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
@@ -46,14 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getInitialSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-
-        // Auth events are handled automatically by state updates
       }
     );
 
@@ -62,12 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Authentication methods
   const signUp = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const result = await authService.signUp(email, password);
-      return result;
+      return await authService.signUp(email, password);
     } finally {
       setLoading(false);
     }
@@ -76,8 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const result = await authService.signIn(email, password);
-      return result;
+      return await authService.signIn(email, password);
     } finally {
       setLoading(false);
     }
@@ -86,8 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     setLoading(true);
     try {
-      const result = await authService.signOut();
-      return result;
+      return await authService.signOut();
     } finally {
       setLoading(false);
     }
@@ -97,20 +93,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return authService.resetPassword(email);
   };
 
-  // Admin methods
+  // Admin methods: query directly via the anon client. The new RLS policies
+  // (event_admins_self_read, users_self_read) restrict the result to the
+  // calling user's own rows, so this is safe.
   const isEventAdmin = async (eventId: string): Promise<boolean> => {
     if (!user) return false;
-    return adminService.isEventAdmin(user.id, eventId);
+    const userId = await resolveOwnUserId(user.id);
+    if (!userId) return false;
+    const { data } = await supabase
+      .from('event_admins')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    return !!data;
   };
 
   const getAdminRole = async (eventId: string): Promise<string | null> => {
     if (!user) return null;
-    return adminService.getAdminRole(user.id, eventId);
+    const userId = await resolveOwnUserId(user.id);
+    if (!userId) return null;
+    const { data } = await supabase
+      .from('event_admins')
+      .select('role')
+      .eq('event_id', eventId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    return data?.role ?? null;
   };
 
   const getUserAdminEvents = async () => {
     if (!user) return [];
-    return adminService.getUserAdminEvents(user.id);
+    const userId = await resolveOwnUserId(user.id);
+    if (!userId) return [];
+    const { data } = await supabase
+      .from('event_admins')
+      .select('role, event:events(*)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    return (data ?? []) as Array<{ event: any; role: string }>;
   };
 
   const value: AuthContextType = {
@@ -127,11 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
@@ -142,13 +159,11 @@ export function useAuth() {
   return context;
 }
 
-// Utility hook for requiring authentication
 export function useRequireAuth() {
   const auth = useAuth();
 
   useEffect(() => {
     if (!auth.loading && !auth.isAuthenticated) {
-      // Redirect to login page
       window.location.href = '/auth/login';
     }
   }, [auth.loading, auth.isAuthenticated]);
@@ -156,7 +171,6 @@ export function useRequireAuth() {
   return auth;
 }
 
-// Utility hook for checking event admin status
 export function useEventAdmin(eventId: string) {
   const auth = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -173,12 +187,8 @@ export function useEventAdmin(eventId: string) {
       }
 
       try {
-        const [adminStatus, userRole] = await Promise.all([
-          auth.isEventAdmin(eventId),
-          auth.getAdminRole(eventId)
-        ]);
-
-        setIsAdmin(adminStatus);
+        const userRole = await auth.getAdminRole(eventId);
+        setIsAdmin(!!userRole);
         setRole(userRole);
       } catch (error) {
         console.error('Error checking admin status:', error);
@@ -190,7 +200,7 @@ export function useEventAdmin(eventId: string) {
     };
 
     checkAdminStatus();
-  }, [auth.user, eventId]);
+  }, [auth, eventId]);
 
   return { isAdmin, role, loading };
 }
