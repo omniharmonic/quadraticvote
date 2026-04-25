@@ -1,5 +1,7 @@
 'use client';
 
+import { authedFetch } from '@/lib/utils/authed-fetch';
+
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,7 +66,7 @@ export default function OptionsManagementPage() {
 
   const fetchEventAndOptions = async () => {
     try {
-      const eventResponse = await fetch(`/api/events/${eventId}`);
+      const eventResponse = await authedFetch(`/api/events/${eventId}`);
       const eventData = await eventResponse.json();
 
       if (eventData.success) {
@@ -93,7 +95,7 @@ export default function OptionsManagementPage() {
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/events/${eventId}/options`, {
+      const response = await authedFetch(`/api/events/${eventId}/options`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -136,7 +138,7 @@ export default function OptionsManagementPage() {
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/events/${eventId}/options/${selectedOption.id}`, {
+      const response = await authedFetch(`/api/events/${eventId}/options/${selectedOption.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -178,7 +180,7 @@ export default function OptionsManagementPage() {
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/events/${eventId}/options/${selectedOption.id}`, {
+      const response = await authedFetch(`/api/events/${eventId}/options/${selectedOption.id}`, {
         method: 'DELETE',
       });
 
@@ -210,7 +212,7 @@ export default function OptionsManagementPage() {
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/events/${eventId}/options/reorder`, {
+      const response = await authedFetch(`/api/events/${eventId}/options/reorder`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

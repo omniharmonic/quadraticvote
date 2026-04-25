@@ -1,5 +1,7 @@
 'use client';
 
+import { authedFetch } from '@/lib/utils/authed-fetch';
+
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +45,7 @@ export default function EventSettingsPage() {
 
   const fetchEvent = async () => {
     try {
-      const response = await fetch(`/api/events/${eventId}`);
+      const response = await authedFetch(`/api/events/${eventId}`);
       const data = await response.json();
 
       if (response.ok && data.event) {
@@ -84,7 +86,7 @@ export default function EventSettingsPage() {
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
+      const response = await authedFetch(`/api/events/${eventId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
@@ -118,7 +120,7 @@ export default function EventSettingsPage() {
     }
 
     try {
-      const response = await fetch(`/api/events/${eventId}`, {
+      const response = await authedFetch(`/api/events/${eventId}`, {
         method: 'DELETE',
       });
 

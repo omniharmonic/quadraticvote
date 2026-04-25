@@ -1,5 +1,7 @@
 'use client';
 
+import { authedFetch } from '@/lib/utils/authed-fetch';
+
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
@@ -188,7 +190,7 @@ export default function CreateEventPage() {
             },
           };
 
-      const response = await fetch('/api/events', {
+      const response = await authedFetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

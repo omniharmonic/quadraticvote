@@ -1,5 +1,7 @@
 'use client';
 
+import { authedFetch } from '@/lib/utils/authed-fetch';
+
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -98,11 +100,11 @@ export default function InviteManagementPage() {
       }
 
       // Fetch event details
-      const eventResponse = await fetch(`/api/events/${eventId}`);
+      const eventResponse = await authedFetch(`/api/events/${eventId}`);
       const eventData = await eventResponse.json();
 
       // Fetch invites with admin code
-      const invitesResponse = await fetch(`/api/events/${eventId}/invites?code=${adminCode}`);
+      const invitesResponse = await authedFetch(`/api/events/${eventId}/invites?code=${adminCode}`);
       const invitesData = await invitesResponse.json();
 
       if (eventData.success && invitesData.success) {
@@ -133,7 +135,7 @@ export default function InviteManagementPage() {
     setIsCreating(true);
 
     try {
-      const response = await fetch(`/api/events/${eventId}/invites?code=${adminCode}`, {
+      const response = await authedFetch(`/api/events/${eventId}/invites?code=${adminCode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(singleForm),
@@ -188,7 +190,7 @@ export default function InviteManagementPage() {
 
       // Create invites for each email
       const createPromises = emailList.map(email =>
-        fetch(`/api/events/${eventId}/invites?code=${adminCode}`, {
+        authedFetch(`/api/events/${eventId}/invites?code=${adminCode}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

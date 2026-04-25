@@ -1,5 +1,7 @@
 'use client';
 
+import { authedFetch } from '@/lib/utils/authed-fetch';
+
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -50,15 +52,15 @@ export default function EventManagementPage() {
   const fetchEventData = async () => {
     try {
       // Fetch event details
-      const eventResponse = await fetch(`/api/events/${eventId}`);
+      const eventResponse = await authedFetch(`/api/events/${eventId}`);
       const eventData = await eventResponse.json();
 
       // Fetch invites stats
-      const invitesResponse = await fetch(`/api/events/${eventId}/invites`);
+      const invitesResponse = await authedFetch(`/api/events/${eventId}/invites`);
       const invitesData = await invitesResponse.json();
 
       // Fetch proposals if applicable
-      const proposalsResponse = await fetch(`/api/proposals?eventId=${eventId}`);
+      const proposalsResponse = await authedFetch(`/api/proposals?eventId=${eventId}`);
       const proposalsData = await proposalsResponse.json();
 
       if (eventData.success) {

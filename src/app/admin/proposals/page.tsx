@@ -1,5 +1,7 @@
 'use client';
 
+import { authedFetch } from '@/lib/utils/authed-fetch';
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,7 +61,7 @@ export default function AdminProposalsPage() {
 
   const fetchProposals = async () => {
     try {
-      const response = await fetch('/api/proposals');
+      const response = await authedFetch('/api/proposals');
       const data = await response.json();
 
       if (response.ok) {
@@ -94,7 +96,7 @@ export default function AdminProposalsPage() {
     setActionLoading(proposalId);
 
     try {
-      const response = await fetch(`/api/proposals/${proposalId}/approve`, {
+      const response = await authedFetch(`/api/proposals/${proposalId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -126,7 +128,7 @@ export default function AdminProposalsPage() {
     setActionLoading(selectedProposal.id);
 
     try {
-      const response = await fetch(`/api/proposals/${selectedProposal.id}/reject`, {
+      const response = await authedFetch(`/api/proposals/${selectedProposal.id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: rejectionReason.trim() }),
