@@ -1,191 +1,161 @@
 'use client';
 
-import Link from 'next/link';
-
-// Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, FileText, Settings, BarChart3, UserPlus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FileText, BarChart3, UserPlus, Plus, Calendar } from 'lucide-react';
 import Navigation from '@/components/layout/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+
+type AdminEventEntry = { event: any; role: string };
 
 export default function AdminDashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading, getUserAdminEvents } = useAuth();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const [events, setEvents] = useState<AdminEventEntry[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!loading && !isAuthenticated) {
       router.push('/auth/login?redirect=/admin');
-      return;
     }
-    setIsLoading(false);
-  }, [isAuthenticated, router]);
+  }, [loading, isAuthenticated, router]);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      setEventsLoading(true);
+      try {
+        const result = await getUserAdminEvents();
+        if (!cancelled) setEvents(result);
+      } finally {
+        if (!cancelled) setEventsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, getUserAdminEvents]);
+
+  if (loading || !user) {
     return (
       <>
         <Navigation />
         <div className="container mx-auto py-8">
-          <div className="animate-pulse">Loading admin dashboard...</div>
+          <div className="animate-pulse">Loading admin dashboard…</div>
         </div>
       </>
     );
-  }
-
-  if (!isAuthenticated || !user) {
-    return null;
   }
 
   return (
     <>
       <Navigation />
       <div className="container mx-auto py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">Manage events, proposals, and system settings</p>
-        <p className="text-sm text-gray-500 mt-1">Welcome back, {user.email}</p>
-      </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-gray-600 mt-2">
+            Welcome back, <span className="font-medium">{user.email}</span>
+          </p>
+        </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Events Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              Events
-            </CardTitle>
-            <CardDescription>
-              Create and manage voting events
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+        {/* Quick actions */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                Create Event
+              </CardTitle>
+              <CardDescription>Start a new voting event</CardDescription>
+            </CardHeader>
+            <CardContent>
               <Link href="/events/create">
-                <Button className="w-full" variant="outline">
-                  Create New Event
-                </Button>
+                <Button className="w-full">New Event</Button>
               </Link>
-              <Link href="/admin/events">
-                <Button className="w-full" variant="outline">
-                  Manage Events
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Proposal Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Proposals
-            </CardTitle>
-            <CardDescription>
-              Moderate community proposals
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Proposals
+              </CardTitle>
+              <CardDescription>Moderate community proposals</CardDescription>
+            </CardHeader>
+            <CardContent>
               <Link href="/admin/proposals">
                 <Button className="w-full" variant="outline">
                   Moderation Queue
                 </Button>
               </Link>
-              <Link href="/admin/proposals/all">
-                <Button className="w-full" variant="outline">
-                  All Proposals
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Admin Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5" />
-              Admin Management
-            </CardTitle>
-            <CardDescription>
-              Manage admin users and invitations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5" />
+                Admin Invite
+              </CardTitle>
+              <CardDescription>Accept an admin invitation</CardDescription>
+            </CardHeader>
+            <CardContent>
               <Link href="/admin/invite">
                 <Button className="w-full" variant="outline">
-                  Accept Admin Invite
+                  Accept Invite
                 </Button>
               </Link>
-              <Link href="/admin/users">
-                <Button className="w-full" variant="outline">
-                  Manage Admin Users
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* User & Invite Management */}
+        {/* Your events */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              User Invites
+              <BarChart3 className="w-5 h-5" />
+              Your Events
             </CardTitle>
-            <CardDescription>
-              Manage voting invitations
-            </CardDescription>
+            <CardDescription>Events where you have admin access</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <Link href="/admin/invites">
-                <Button className="w-full" variant="outline">
-                  Manage Invites
-                </Button>
-              </Link>
-              <Link href="/admin/invites/create">
-                <Button className="w-full" variant="outline">
-                  Create Invites
-                </Button>
-              </Link>
-            </div>
+            {eventsLoading ? (
+              <div className="text-sm text-gray-500">Loading…</div>
+            ) : events.length === 0 ? (
+              <div className="text-sm text-gray-500">
+                You don&apos;t admin any events yet.{' '}
+                <Link href="/events/create" className="text-indigo-600 hover:text-indigo-500 font-medium">
+                  Create one
+                </Link>
+                .
+              </div>
+            ) : (
+              <ul className="divide-y">
+                {events.map(({ event, role }) => (
+                  <li key={event.id} className="py-3 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{event.title}</div>
+                      <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(event.start_time).toLocaleDateString()} → {new Date(event.end_time).toLocaleDateString()}
+                        <Badge variant="outline" className="ml-2">{role}</Badge>
+                      </div>
+                    </div>
+                    <Link href={`/admin/events/${event.id}`}>
+                      <Button size="sm" variant="outline">Manage</Button>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
-
-        {/* System Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Settings
-            </CardTitle>
-            <CardDescription>
-              Configure platform settings
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Link href="/admin/settings">
-                <Button className="w-full" variant="outline">
-                  Platform Settings
-                </Button>
-              </Link>
-              <Link href="/admin/logs">
-                <Button className="w-full" variant="outline">
-                  View Logs
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
       </div>
     </>
   );
