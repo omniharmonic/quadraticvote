@@ -89,23 +89,18 @@ export default function InviteManagementPage() {
 
   const fetchEventAndInvites = async () => {
     try {
-      if (!adminCode) {
-        toast({
-          title: 'Access Required',
-          description: 'Please access this page from the admin dashboard with proper authorization.',
-          variant: 'destructive',
-        });
-        router.push('/');
-        return;
-      }
-
       // Fetch event details
       const eventResponse = await authedFetch(`/api/events/${eventId}`);
       const eventData = await eventResponse.json();
 
-      // Fetch invites with admin code
-      const invitesResponse = await authedFetch(`/api/events/${eventId}/invites?code=${adminCode}`);
+      // Fetch invites — auth is JWT-based via authedFetch
+      const invitesResponse = await authedFetch(`/api/events/${eventId}/invites`);
       const invitesData = await invitesResponse.json();
+
+      if (invitesResponse.status === 401 || invitesResponse.status === 403) {
+        router.push('/auth/login?redirect=' + encodeURIComponent(window.location.pathname));
+        return;
+      }
 
       if (eventData.success && invitesData.success) {
         setEvent(eventData.event);
