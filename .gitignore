@@ -64,4 +64,5 @@ drizzle/
 # Playwright outputs
 /playwright-report/
 /test-results/
+/.playwright-mcp/
 
