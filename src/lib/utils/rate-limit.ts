@@ -1,30 +1,54 @@
+import { createServiceRoleClient } from '@/lib/supabase';
+
 export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
-  reset?: number;
 }
 
 /**
- * Check rate limit for a key
- * Simplified version without Redis - just allows all requests for now
+ * Postgres-backed sliding-window rate limiter.
+ *
+ * Calls the public.check_rate_limit() SQL function (defined in the
+ * 20260425000100_rate_limits migration), which atomically buckets and
+ * counts the current window via UPSERT.
+ *
+ * Failure is fail-open: if the DB is unreachable or the migration is not
+ * applied, requests are allowed through and a warning is logged. This
+ * keeps the API up when the side-channel is unhealthy and matches the
+ * previous no-op behaviour while degraded.
  */
 export async function checkRateLimit(
   key: string,
   limit: number,
-  window: number // seconds
+  windowSeconds: number
 ): Promise<RateLimitResult> {
-  // For now, just allow all requests to avoid Redis dependency
-  // In production, you could implement rate limiting using Supabase or in-memory
-  return { allowed: true, remaining: limit };
+  try {
+    const supabase = createServiceRoleClient();
+    const { data, error } = await supabase.rpc('check_rate_limit', {
+      p_key: key,
+      p_window_seconds: windowSeconds,
+      p_max_count: limit,
+    });
+
+    if (error || !data || data.length === 0) {
+      console.warn('[rate-limit] DB call failed, failing open:', error?.message);
+      return { allowed: true, remaining: limit };
+    }
+
+    const row = data[0] as { allowed: boolean; current_count: number };
+    return {
+      allowed: row.allowed,
+      remaining: Math.max(0, limit - row.current_count),
+    };
+  } catch (err) {
+    console.warn('[rate-limit] unexpected error, failing open:', err);
+    return { allowed: true, remaining: limit };
+  }
 }
 
-/**
- * Rate limit configurations
- */
 export const RATE_LIMITS = {
-  VOTE_SUBMISSION: { limit: 10, window: 60 }, // 10 per minute
-  PROPOSAL_SUBMISSION: { limit: 10, window: 3600 }, // 10 per hour
-  INVITE_VALIDATION: { limit: 20, window: 60 }, // 20 per minute
-  API_GENERAL: { limit: 100, window: 60 }, // 100 per minute
+  VOTE_SUBMISSION: { limit: 10, window: 60 },
+  PROPOSAL_SUBMISSION: { limit: 10, window: 3600 },
+  INVITE_VALIDATION: { limit: 20, window: 60 },
+  API_GENERAL: { limit: 100, window: 60 },
 };
-

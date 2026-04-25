@@ -39,6 +39,29 @@ next-env.d.ts
 *.swp
 *.swo
 
-# Drizzle
+# Drizzle (legacy migrations, replaced by supabase/migrations)
 drizzle/
+
+# Local dev/debug scratch — kept locally, not committed
+/test-*.js
+/test-*.sh
+/debug-*.js
+/check-*.js
+/create-test-users.js
+/fix-user-records.js
+/fix-rls-policies.sql
+/safe-disable-rls.sql
+/migration-add-payout-wallet.sql
+/gnosis-batch-*.csv
+/dev.log
+
+# Stale top-level reports — see /.claude/ for the maintained docs
+/ADVANCED_FEATURES_TEST_REPORT.md
+/FINAL_TESTING_REPORT.md
+/PROGRESS_REPORT_JAN22.md
+/TESTING_SUMMARY.md
+
+# Playwright outputs
+/playwright-report/
+/test-results/
 

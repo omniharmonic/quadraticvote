@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { proposalService } from '@/lib/services/proposal.service';
 import { submitProposalSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
+import { requireAuth } from '@/lib/utils/auth-middleware';
 
 /**
  * POST /api/proposals
@@ -84,9 +85,17 @@ export async function GET(request: NextRequest) {
 
     let proposals;
     if (eventId) {
+      // Per-event listing is public (proposals are visible per event RLS).
       proposals = await proposalService.getProposalsByEventId(eventId, status);
     } else {
-      // Get all proposals across all events (for admin interface)
+      // Cross-event listing is admin-only — require an authenticated user.
+      const auth = await requireAuth(request);
+      if (!auth.success) {
+        return NextResponse.json(
+          { error: auth.error || 'Authentication required' },
+          { status: 401 }
+        );
+      }
       proposals = await proposalService.getAllProposals(status);
     }
 
