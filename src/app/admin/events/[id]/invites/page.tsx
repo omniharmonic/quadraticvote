@@ -136,7 +136,10 @@ export default function InviteManagementPage() {
       if (response.ok) {
         toast({
           title: `Invite${singleForm.count > 1 ? 's' : ''} created`,
-          description: 'Copy the link from the Manage tab and share it.',
+          description: data.emailSent
+            ? `Email sent to ${singleForm.email}.`
+            : 'Email failed to send — copy the link from the Manage tab instead.',
+          variant: data.emailSent ? 'default' : 'destructive',
         });
 
         // Reset form
@@ -192,13 +195,20 @@ export default function InviteManagementPage() {
       );
 
       const responses = await Promise.allSettled(createPromises);
-      const successful = responses.filter(r => r.status === 'fulfilled').length;
+      const okResults = await Promise.all(
+        responses.map(async r =>
+          r.status === 'fulfilled' && r.value.ok ? await r.value.json() : null
+        )
+      );
+      const successful = okResults.filter(Boolean).length;
+      const emailed = okResults.filter(d => d?.emailSent).length;
       const failed = responses.length - successful;
 
       toast({
         title: 'Bulk invites created',
         description:
-          `${successful} link${successful === 1 ? '' : 's'} ready to share` +
+          `${successful} invite${successful === 1 ? '' : 's'} created` +
+          (emailed > 0 ? `, ${emailed} email${emailed === 1 ? '' : 's'} sent` : '') +
           (failed > 0 ? `, ${failed} failed` : '') + '.',
       });
 
@@ -307,13 +317,6 @@ export default function InviteManagementPage() {
           </p>
         </div>
 
-        {/* Honest banner — we don't actually send emails */}
-        <div className="mb-8 border border-blueprint/30 bg-blueprint/8 rounded-[3px] px-4 py-3 font-serif text-[14.5px] text-ink-2 leading-snug">
-          <strong className="text-ink">Heads up:</strong> we don&apos;t send emails (yet).
-          Each invite generates a unique link — copy it from the Manage tab and
-          share it however your community talks (email, Slack, Discord, DMs).
-        </div>
-
         {/* Stats */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -384,7 +387,8 @@ export default function InviteManagementPage() {
                     Single invite
                   </CardTitle>
                   <CardDescription>
-                    Generate a unique invite link for one person.
+                    Email a unique invite link to one person. The link is also
+                    copyable from the Manage tab.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -458,8 +462,8 @@ export default function InviteManagementPage() {
                     Bulk invites
                   </CardTitle>
                   <CardDescription>
-                    Generate links for many people at once. Paste a list of
-                    emails — each one gets its own unique link.
+                    Email invites to many people at once. Paste a list of
+                    emails — each person gets their own unique link.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -576,8 +580,8 @@ export default function InviteManagementPage() {
           <DialogHeader>
             <DialogTitle>Create bulk invites</DialogTitle>
             <DialogDescription>
-              Paste a list of email addresses (one per line). We&apos;ll generate
-              a unique invite link for each one.
+              Paste a list of email addresses (one per line). Each person gets
+              an emailed invite with a unique link.
             </DialogDescription>
           </DialogHeader>
 

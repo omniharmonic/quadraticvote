@@ -3,6 +3,7 @@ import { createServiceRoleClient } from '@/lib/supabase';
 
 const supabase = createServiceRoleClient();
 import { generateInviteCode } from '@/lib/utils/auth';
+import { sendAdminInvite } from '@/lib/services/email.service';
 import type { User } from '@supabase/supabase-js';
 import type { EventAdmin, AdminInvitation, NewEventAdmin, NewAdminInvitation } from '@/lib/db/auth-schema';
 
@@ -252,6 +253,21 @@ export class AdminService {
 
       if (error) {
         return { success: false, error: error.message };
+      }
+
+      const { data: event } = await supabase
+        .from('events')
+        .select('title')
+        .eq('id', eventId)
+        .single();
+
+      if (event?.title) {
+        await sendAdminInvite({
+          to: email,
+          eventTitle: event.title,
+          code: inviteCode,
+          role,
+        });
       }
 
       return { success: true, inviteCode };

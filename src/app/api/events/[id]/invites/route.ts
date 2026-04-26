@@ -5,6 +5,8 @@ export const dynamic = 'force-dynamic';
 
 import { createServiceRoleClient } from '@/lib/supabase';
 import { generateInviteCode } from '@/lib/utils/auth';
+import { sendVoterInvite } from '@/lib/services/email.service';
+import { eventService } from '@/lib/services/event.service';
 
 const supabase = createServiceRoleClient();
 import { withEventAdmin, createAuthErrorResponse } from '@/lib/utils/auth-middleware';
@@ -98,10 +100,25 @@ export const POST = withEventAdmin(async (
       throw new Error(`Failed to create invite: ${createError.message}`);
     }
 
+    const event = await eventService.getEventById(eventId);
+    const emailResult = event
+      ? await sendVoterInvite({
+          to: email,
+          eventTitle: event.title,
+          eventId,
+          code: newInvite.code,
+          inviteType,
+        })
+      : { sent: false, error: 'event_not_found' as const };
+
     return NextResponse.json({
       success: true,
       invite: newInvite,
-      message: 'Invite created successfully'
+      emailSent: emailResult.sent,
+      emailError: emailResult.sent ? undefined : emailResult.error,
+      message: emailResult.sent
+        ? 'Invite created and email sent'
+        : 'Invite created (email not sent — share the link manually)',
     });
   } catch (error) {
     console.error('Error creating invite:', error);

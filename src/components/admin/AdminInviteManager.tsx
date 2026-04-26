@@ -93,7 +93,7 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
         throw new Error(data.error || 'Failed to send invitation');
       }
 
-      setSuccess('Invite created. Copy the link below and send it to them.');
+      setSuccess('Invite sent. The link below is also copyable as a backup.');
       setInviteEmail('');
       setInviteRole('admin');
 
@@ -127,8 +127,8 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
         Admin invitations
       </h3>
       <p className="text-sm text-gray-600 mb-4">
-        Each invite generates a link. We don&apos;t send emails — copy the
-        link and share it however your community talks.
+        We&apos;ll email an invite link to the address below. Each link is also
+        copyable from the list as a backup.
       </p>
 
       {/* Invite Form */}
