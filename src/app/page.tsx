@@ -70,24 +70,26 @@ export default function HomePage() {
 
               <h1 className="mt-5 font-display text-[42px] sm:text-[58px] lg:text-[78px] leading-[0.98] tracking-[-0.02em] text-ink anim-ink [animation-delay:80ms] text-balance">
                 Decide together,{' '}
-                <span className="scribble-underline">root and all</span>.
+                <span className="scribble-underline">fairly</span>.
               </h1>
 
               <p className="mt-7 max-w-xl font-serif text-[19px] leading-snug text-ink-2 anim-ink [animation-delay:200ms] text-pretty">
-                A drafting table for the things a community needs to weigh.
-                Allocate credits, count by <span className="font-display italic">√</span>, and turn opinion
-                into outcome — without letting a loud minority drown anyone out.
+                Quadratic voting for groups making decisions together.
+                Each voter gets the same credits; votes count as the
+                <span className="font-display italic"> √ </span>
+                of credits spent — so a loud minority can&apos;t drown
+                out everyone else.
               </p>
 
               <div className="mt-9 flex flex-wrap items-center gap-3 anim-ink [animation-delay:340ms]">
                 <Link href="/events/create" className="btn-ink">
-                  Draft an event →
+                  Create an event →
                 </Link>
                 <Link href="#slate" className="btn-paper">
                   Browse open events
                 </Link>
                 <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3 ml-2">
-                  No card required
+                  Free · no credit card
                 </span>
               </div>
             </div>
@@ -129,10 +131,10 @@ export default function HomePage() {
                 </div>
 
                 <p className="mt-4 font-serif text-[14.5px] text-ink-2 leading-snug">
-                  Spreading your support is{' '}
+                  Spreading your credits is{' '}
                   <span className="text-blueprint font-medium">always</span>{' '}
-                  worth more than piling on. Quadratic voting is just
-                  arithmetic, but it changes the conversation.
+                  worth more votes than concentrating them. That&apos;s the
+                  whole idea.
                 </p>
               </SchematicCard>
             </div>
@@ -145,9 +147,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-20">
           <div className="flex items-end justify-between mb-10">
             <div>
-              <SectionLabel number={2}>The flow</SectionLabel>
+              <SectionLabel number={2}>How it works</SectionLabel>
               <h2 className="mt-3 font-display text-3xl md:text-4xl text-ink leading-tight">
-                Three steps, no robes required.
+                Three steps, start to finish.
               </h2>
             </div>
           </div>
@@ -156,25 +158,25 @@ export default function HomePage() {
             {[
               {
                 n: 1,
-                title: 'Set the table',
+                title: 'Create the event',
                 body:
-                  'Write the question. Pick a framework — pick a winner, or split a pool. Add the options or invite proposals.',
-                cta: { href: '/events/create', label: 'Draft event' },
+                  'Write the question. Pick winners, or split a pool. Add the options yourself or let the community submit them.',
+                cta: { href: '/events/create', label: 'Create event' },
                 accent: 'blueprint' as const,
               },
               {
                 n: 2,
-                title: 'Pass the pen',
+                title: 'Share with voters',
                 body:
-                  'Send the link. Voters get the same credit purse. They allocate however much they care, and the math handles fairness.',
+                  'Send the invite link. Each voter gets the same credit budget and decides how to spend it across the options.',
                 cta: null,
                 accent: 'terracotta' as const,
               },
               {
                 n: 3,
-                title: 'Read the results',
+                title: 'See the results',
                 body:
-                  'Live tally if you want it visible. Otherwise the answer drops at the deadline, with a printable record.',
+                  'Show a live tally during voting if you want, or wait until the deadline. Export the result as a CSV when it\'s over.',
                 cta: { href: '#slate', label: 'See examples' },
                 accent: 'sage' as const,
               },
@@ -220,7 +222,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-24">
           <SectionLabel number={3}>Two ways to decide</SectionLabel>
           <h2 className="mt-3 font-display text-3xl md:text-4xl text-ink leading-tight max-w-3xl text-balance">
-            Pick a winner. Or split a pool. The schematic tells you which fits.
+            Pick winners. Or split a pool. Choose what fits the decision.
           </h2>
 
           <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -233,11 +235,12 @@ export default function HomePage() {
                 </span>
               </div>
               <h3 className="mt-3 font-display text-3xl text-ink">
-                Choose winners.
+                Pick winners.
               </h3>
               <p className="mt-2 font-serif text-[15.5px] text-ink-2 leading-snug">
-                Three finalists. Twelve grant applicants. The shortlist that
-                gets the green light.
+                Pick a top N, set a percentage cutoff, or take everything
+                above the average. Good for shortlists, awards, and
+                yes/no decisions.
               </p>
 
               {/* tiny schematic: ranked bars */}
@@ -294,11 +297,13 @@ export default function HomePage() {
                 </span>
               </div>
               <h3 className="mt-3 font-display text-3xl text-ink">
-                Split the pie.
+                Split a pool.
               </h3>
               <p className="mt-2 font-serif text-[15.5px] text-ink-2 leading-snug">
-                $100k of grants. A retroactive rewards round. Anything where
-                <em> how much</em> matters as much as <em>who</em>.
+                Distribute a budget across many options in proportion to
+                community support. Good for grants, retroactive rewards,
+                and any decision where <em>how much</em> matters as
+                much as <em>who</em>.
               </p>
 
               {/* tiny schematic: stacked allocation bar */}
@@ -353,14 +358,14 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-24">
           <div className="flex items-end justify-between mb-10 gap-6 flex-wrap">
             <div>
-              <SectionLabel number={4}>Open slate</SectionLabel>
+              <SectionLabel number={4}>Open events</SectionLabel>
               <h2 className="mt-3 font-display text-3xl md:text-4xl text-ink leading-tight">
                 {live.length > 0
                   ? 'Open for voting now.'
-                  : 'No events open this minute.'}
+                  : 'No events are open right now.'}
               </h2>
               <p className="mt-2 font-serif text-ink-2">
-                {events.length} on file ·{' '}
+                {events.length} total ·{' '}
                 <span className="text-sage">{live.length} live</span> ·{' '}
                 <span className="text-terracotta">{upcoming.length} upcoming</span> ·{' '}
                 <span className="text-ink-3">{closed.length} closed</span>
@@ -368,7 +373,7 @@ export default function HomePage() {
             </div>
 
             <Link href="/events/create" className="btn-blueprint">
-              + Draft an event
+              + Create event
             </Link>
           </div>
 
@@ -378,16 +383,16 @@ export default function HomePage() {
             <SchematicCard className="p-12 text-center">
               <Sqrt size="md" className="mx-auto opacity-30" />
               <p className="mt-4 font-display text-2xl text-ink">
-                The slate is blank.
+                Nothing here yet.
               </p>
               <p className="mt-2 font-serif text-ink-2">
-                Be the first to draft something for the community.
+                Create the first event for your community.
               </p>
               <Link
                 href="/events/create"
                 className="btn-ink mt-6 inline-flex"
               >
-                Start drafting
+                Create event
               </Link>
             </SchematicCard>
           ) : (
@@ -410,8 +415,8 @@ export default function HomePage() {
                 <span className="mx-1 text-terracotta">·</span>vote
               </span>
               <p className="mt-3 font-serif text-[15px] text-ink-2 leading-snug max-w-xs">
-                A small, opinionated tool for honest community decisions.
-                Built like a drafting table — measured, lit, and warm.
+                An open-source tool for community decisions using
+                quadratic voting.
               </p>
             </div>
             <div>
@@ -445,7 +450,7 @@ export default function HomePage() {
           <InkRule />
           <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
             <span>QV · {new Date().getFullYear()}</span>
-            <span>Edition · 0.1 · Drafting</span>
+            <span>v0.1 · beta</span>
           </div>
         </div>
       </footer>
@@ -543,7 +548,7 @@ function EventCard({ event, index }: { event: Event; index: number }) {
       </div>
 
       <div className="mt-5 flex items-center justify-between font-mono text-[10.5px] uppercase tracking-widest text-ink-3 group-hover:text-terracotta transition-colors">
-        <span>Open the file</span>
+        <span>Open event</span>
         <span aria-hidden>→</span>
       </div>
     </SchematicCard>

@@ -29,6 +29,7 @@ function mapProposalRow(row: any): any {
   };
 }
 import { hashString } from '@/lib/utils/auth';
+import { getInitialProposalStatus } from '@/lib/utils/proposal-status';
 import type { Proposal } from '@/lib/types';
 
 export class ProposalService {
@@ -182,25 +183,8 @@ export class ProposalService {
     }
   }
   
-  /**
-   * Determine initial proposal status based on moderation mode
-   */
   private getInitialStatus(proposalConfig: any): string {
-    if (!proposalConfig) return 'pending_approval';
-
-    const { moderation_mode } = proposalConfig;
-
-    switch (moderation_mode) {
-      case 'pre_approval':
-        return 'pending_approval';
-      case 'post_approval':
-      case 'none':
-        return 'approved';
-      case 'threshold':
-        return 'submitted';
-      default:
-        return 'pending_approval';
-    }
+    return getInitialProposalStatus(proposalConfig);
   }
 
   /**

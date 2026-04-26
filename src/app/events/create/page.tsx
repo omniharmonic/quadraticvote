@@ -84,7 +84,8 @@ export default function CreateEventPage() {
     options: [{ title: '', description: '' }],
     proposalConfig: {
       enabled: false,
-      moderationMode: 'pre_approval',
+      // Default matches requireModeration toggle below (off by default)
+      moderationMode: 'none',
       accessControl: 'open',
       maxProposalsPerUser: 3
     },
@@ -274,10 +275,10 @@ export default function CreateEventPage() {
               <span className="text-ink-3/60">·</span> {stepLabels[currentStep - 1]}
             </div>
             <h1 className="mt-3 font-display text-4xl md:text-5xl text-ink leading-tight tracking-[-0.018em]">
-              Draft a new event.
+              Create a new event.
             </h1>
             <p className="mt-3 max-w-xl font-serif text-[16.5px] text-ink-2 leading-snug">
-              Six measured steps. Every choice maps to one box on the schematic.
+              Six steps. You can edit most settings later.
             </p>
 
             {/* Step bar */}

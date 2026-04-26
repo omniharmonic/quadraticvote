@@ -28,7 +28,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'QuadraticVote.xyz — community decisions, fairly counted',
   description:
-    'A drafting table for civic decisions. Allocate credits, count by √, and turn community signal into fair outcomes.',
+    'Quadratic voting for community decisions. Each voter gets the same credits; votes count as the square root of credits spent — so a loud minority can\'t drown out everyone else.',
 };
 
 export default function RootLayout({

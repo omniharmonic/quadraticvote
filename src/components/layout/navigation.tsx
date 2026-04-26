@@ -97,7 +97,7 @@ export default function Navigation({
                   href="/admin"
                   className="hidden lg:inline font-mono text-[11px] uppercase tracking-widest text-ink-3 hover:text-ink transition-colors"
                 >
-                  Studio
+                  Dashboard
                 </Link>
                 <span
                   className="hidden md:inline font-serif text-sm text-ink-3"

@@ -41,7 +41,7 @@ export function AcceptInviteForm({ inviteCode: initialCode }: AcceptInviteFormPr
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to accept invitation');
-      setSuccess('Invitation accepted. Redirecting to your studio…');
+      setSuccess('Invitation accepted. Redirecting to your dashboard…');
       setTimeout(() => router.push('/admin'), 1800);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to accept invitation');
@@ -58,10 +58,10 @@ export function AcceptInviteForm({ inviteCode: initialCode }: AcceptInviteFormPr
         <div className="relative mx-auto max-w-2xl px-5 md:px-8 py-12">
           <SectionLabel>Admin invitation</SectionLabel>
           <h1 className="mt-3 font-display text-4xl text-ink leading-tight tracking-[-0.018em] text-balance">
-            Take a seat at the table.
+            Accept your invitation.
           </h1>
           <p className="mt-3 max-w-lg font-serif text-[16px] text-ink-2 leading-snug">
-            Drop in the code an organizer sent you. You&apos;ll join their event as a
+            Enter the code an organizer sent you. You&apos;ll join their event as a
             co-organizer.
           </p>
         </div>

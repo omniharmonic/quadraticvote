@@ -52,7 +52,7 @@ export default function ResultsPage() {
       <div className="min-h-screen bg-paper">
         <Navigation />
         <div className="mx-auto max-w-5xl px-5 md:px-8 py-20 font-mono text-[11px] uppercase tracking-widest text-ink-3">
-          Tallying…
+          Loading results…
         </div>
       </div>
     );
@@ -64,9 +64,9 @@ export default function ResultsPage() {
         <Navigation />
         <div className="mx-auto max-w-md px-5 md:px-8 py-20 text-center">
           <Sqrt size="md" className="opacity-30" />
-          <h1 className="mt-4 font-display text-3xl text-ink">Tally not available.</h1>
+          <h1 className="mt-4 font-display text-3xl text-ink">No results yet.</h1>
           <p className="mt-2 font-serif text-ink-2">
-            This event may not have results yet.
+            Voting hasn&apos;t produced any results yet.
           </p>
         </div>
       </div>
@@ -94,7 +94,7 @@ export default function ResultsPage() {
         <div className="relative mx-auto max-w-6xl px-5 md:px-8 py-12 md:py-16">
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div className="max-w-3xl">
-              <SectionLabel>{isClosed ? 'Final tally' : 'Live tally'}</SectionLabel>
+              <SectionLabel>{isClosed ? 'Final results' : 'Live results'}</SectionLabel>
               <h1 className="mt-3 font-display text-[36px] sm:text-[48px] lg:text-[56px] leading-[1.02] tracking-[-0.02em] text-ink anim-ink text-balance">
                 {event.title}
               </h1>
@@ -115,9 +115,8 @@ export default function ResultsPage() {
                   </Spec>
                 ) : (
                   <Spec label="Pool">
-                    {framework.config.resource_symbol}
                     {Number(framework.config.total_pool_amount).toLocaleString()}{' '}
-                    {framework.config.resource_name}
+                    {framework.config.resource_symbol || framework.config.resource_name}
                   </Spec>
                 )}
               </div>
@@ -143,7 +142,7 @@ export default function ResultsPage() {
           <SchematicCard className="p-7 md:p-9 mt-10">
             <SectionLabel number={3}>Participation over time</SectionLabel>
             <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
-              When the votes came in.
+              When votes were submitted.
             </h2>
             <ParticipationChart data={analytics.participation_over_time} />
           </SchematicCard>
@@ -190,11 +189,11 @@ function BinaryReport({ results }: { results: any }) {
           <div className="flex items-baseline justify-between">
             <SectionLabel number={1}>Selected</SectionLabel>
             <span className="font-mono text-[10.5px] uppercase tracking-widest text-blueprint">
-              {selected.length} on the cut · margin {margin?.toFixed(1) ?? '—'}
+              {selected.length} selected · margin {margin?.toFixed(1) ?? '—'}
             </span>
           </div>
           <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
-            These options crossed the line.
+            These options were selected.
           </h2>
 
           <ul className="mt-6 divide-y divide-ink/12">
@@ -240,11 +239,11 @@ function BinaryReport({ results }: { results: any }) {
         </SchematicCard>
 
         <SchematicCard className="p-6 self-start">
-          <SectionLabel>Reading this</SectionLabel>
+          <SectionLabel>How to read this</SectionLabel>
           <p className="mt-3 font-serif text-[15px] text-ink-2 leading-snug">
-            Bars show <em>quadratic</em> votes, not raw credits. The dashed
-            line marks where the cut was set. Margin is the distance between
-            the last in and the first out.
+            Bars show <em>quadratic</em> votes (√credits), not raw credits.
+            Margin is the gap between the last selected option and the
+            first one that didn&apos;t make the cut.
           </p>
 
           <hr className="ink-rule" />
@@ -274,15 +273,14 @@ function ProportionalReport({ results }: { results: any }) {
           <div className="flex items-baseline justify-between">
             <SectionLabel number={1}>Distribution</SectionLabel>
             <span className="font-mono text-[10.5px] uppercase tracking-widest text-terracotta">
-              {results.resource_symbol}
               {totalAllocated.toLocaleString(undefined, {
                 maximumFractionDigits: 2,
               })}{' '}
-              allocated
+              {results.resource_symbol} allocated
             </span>
           </div>
           <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
-            How the pool splits.
+            Pool distribution.
           </h2>
 
           {/* Stacked bar */}
@@ -325,13 +323,12 @@ function ProportionalReport({ results }: { results: any }) {
                 </div>
                 <div className="shrink-0 text-right min-w-[140px]">
                   <div className="font-display text-[22px] tabular-nums text-ink leading-none">
-                    {results.resource_symbol}
                     {d.allocation_amount.toLocaleString(undefined, {
                       maximumFractionDigits: 2,
                     })}
                   </div>
                   <div className="font-mono text-[10px] uppercase tracking-widest text-ink-3 mt-1">
-                    {results.resource_name}
+                    {results.resource_symbol || results.resource_name}
                   </div>
                 </div>
               </li>
@@ -340,18 +337,19 @@ function ProportionalReport({ results }: { results: any }) {
         </SchematicCard>
 
         <SchematicCard className="p-6 self-start">
-          <SectionLabel>Reading this</SectionLabel>
+          <SectionLabel>How to read this</SectionLabel>
           <p className="mt-3 font-serif text-[15px] text-ink-2 leading-snug">
             Each option&apos;s share of the pool is proportional to the
             quadratic votes it received. The Gini coefficient below
-            summarises how concentrated the result is.
+            summarizes how concentrated the result is — 0 means perfectly
+            even, 1 means everything went to one option.
           </p>
 
           <hr className="ink-rule" />
-          <SpecRow label="Pool" value={`${results.resource_symbol}${Number(totalPool).toLocaleString()}`} />
+          <SpecRow label="Pool" value={`${Number(totalPool).toLocaleString()} ${results.resource_symbol ?? ''}`.trim()} />
           <SpecRow
             label="Allocated"
-            value={`${results.resource_symbol}${totalAllocated.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+            value={`${totalAllocated.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${results.resource_symbol ?? ''}`.trim()}
           />
           <SpecRow
             label="Gini"
@@ -381,25 +379,65 @@ const DIST_COLORS = [
 
 /* ───── timeline ───── */
 function ParticipationChart({ data }: { data: any[] }) {
-  const sorted = [...data].sort((a, b) =>
-    a.timestamp.localeCompare(b.timestamp)
-  );
-  const max = Math.max(...sorted.map((d) => d.voteCount), 1);
+  const sorted = [...data]
+    .filter((d) => d?.timestamp && typeof d.voteCount === 'number')
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+  if (sorted.length === 0) return null;
+
+  const total = sorted.reduce((sum, d) => sum + d.voteCount, 0);
+  const fmtTime = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+    });
+
+  // Single-bucket data is meaningless as a chart — show it as a sentence.
+  if (sorted.length === 1) {
+    return (
+      <p className="mt-5 font-serif text-[15px] text-ink-2 leading-snug">
+        All <strong className="text-ink">{total}</strong> vote{total === 1 ? '' : 's'} arrived
+        within the hour of <strong className="text-ink">{fmtTime(sorted[0].timestamp)}</strong>.
+      </p>
+    );
+  }
+
+  const max = Math.max(...sorted.map((d) => d.voteCount));
+  const showLabelEvery = Math.max(1, Math.ceil(sorted.length / 6));
+
   return (
-    <div className="mt-6 flex items-end gap-1 h-40 border-b border-ink/25 pl-2 pr-2">
-      {sorted.map((d, i) => (
-        <div
-          key={d.timestamp}
-          className="relative flex-1 group"
-          style={{ height: '100%' }}
-          title={`${new Date(d.timestamp).toLocaleString()} — ${d.voteCount} votes`}
-        >
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-blueprint group-hover:bg-blueprint-2 transition-colors"
-            style={{ height: (d.voteCount / max) * 100 + '%' }}
-          />
-        </div>
-      ))}
+    <div className="mt-6">
+      <div className="flex items-end gap-[3px] h-32">
+        {sorted.map((d) => {
+          const heightPct = max > 0 ? (d.voteCount / max) * 100 : 0;
+          return (
+            <div
+              key={d.timestamp}
+              className="relative flex-1 h-full flex items-end group"
+              title={`${fmtTime(d.timestamp)} — ${d.voteCount} vote${d.voteCount === 1 ? '' : 's'}`}
+            >
+              <div
+                className="w-full bg-blueprint/85 group-hover:bg-blueprint transition-colors min-h-[2px]"
+                style={{ height: `${heightPct}%` }}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-2 border-t border-ink/25" />
+      <div className="mt-2 flex justify-between font-mono text-[10px] uppercase tracking-widest text-ink-3">
+        {sorted.map((d, i) =>
+          i % showLabelEvery === 0 || i === sorted.length - 1 ? (
+            <span key={d.timestamp} className="tabular-nums">
+              {fmtTime(d.timestamp)}
+            </span>
+          ) : null
+        )}
+      </div>
+      <p className="mt-3 font-mono text-[11px] uppercase tracking-widest text-ink-3">
+        Peak hour · {max} vote{max === 1 ? '' : 's'} · {total} total
+      </p>
     </div>
   );
 }

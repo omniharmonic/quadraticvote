@@ -100,8 +100,8 @@ export default function VotingPage() {
       return true;
     }
     toast({
-      title: 'Code didn\'t check out',
-      description: 'Double-check it with whoever sent you.',
+      title: 'Invalid invite code',
+      description: 'Check the code and try again, or ask the organizer.',
       variant: 'destructive',
     });
     return false;
@@ -132,7 +132,7 @@ export default function VotingPage() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message || 'Submission failed');
-      toast({ title: 'Vote on file.', description: 'Thank you for participating.' });
+      toast({ title: 'Vote submitted.', description: 'Thanks for participating.' });
       router.push(`/events/${params.id}/results`);
     } catch (err) {
       toast({
@@ -150,7 +150,7 @@ export default function VotingPage() {
       <div className="min-h-screen bg-paper">
         <Navigation />
         <div className="mx-auto max-w-3xl px-5 md:px-8 py-20 font-mono text-[11px] uppercase tracking-widest text-ink-3">
-          Preparing the ballot…
+          Loading…
         </div>
       </div>
     );
@@ -166,17 +166,17 @@ export default function VotingPage() {
         <div className="relative mx-auto max-w-md px-5 md:px-8 py-16">
           <SectionLabel>Verify</SectionLabel>
           <h1 className="mt-3 font-display text-4xl text-ink leading-tight text-balance">
-            {isPublic ? 'Step inside.' : 'Show your invitation.'}
+            {isPublic ? 'Vote anonymously' : 'Enter your invite code'}
           </h1>
           <p className="mt-3 font-serif text-[16px] text-ink-2 leading-snug">
             {isPublic
-              ? 'This event is open to the public — you can vote anonymously, or with the invite code an organizer sent you.'
-              : 'This event is invite-only. Drop in the code from the email you received.'}
+              ? 'This event is open to the public. Vote anonymously, or enter an invite code if an organizer sent you one.'
+              : 'This event is invite-only. Enter the code that was shared with you.'}
           </p>
 
           <SchematicCard accent className="mt-8 p-6">
             <div className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 mb-3">
-              On file
+              Event
             </div>
             <h2 className="font-display text-xl text-ink leading-tight">
               {event.title}
@@ -317,7 +317,7 @@ export default function VotingPage() {
         <div className="mx-auto max-w-4xl px-5 md:px-8 py-10">
           <SectionLabel>Cast a vote</SectionLabel>
           <h1 className="mt-3 font-display text-[34px] sm:text-[42px] leading-[1.05] tracking-[-0.018em] text-ink anim-ink text-balance">
-            Spend the credits you care about. The math does the rest.
+            Allocate your credits. The math does the rest.
           </h1>
           <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-1 font-serif text-[15px] text-ink-2">
             <span>
@@ -326,7 +326,7 @@ export default function VotingPage() {
             </span>
             <span>
               <span className="text-ink-3 font-mono text-[11px] uppercase tracking-widest mr-2">Tip</span>
-              spreading wins more votes than piling on
+              spreading credits earns more votes than concentrating
             </span>
           </div>
         </div>
@@ -408,10 +408,10 @@ export default function VotingPage() {
                 {/* Live spend preview */}
                 {allocatedHere && !isBinary && framework?.config?.total_pool_amount && (
                   <div className="flex items-baseline justify-between font-mono text-[11px] uppercase tracking-widest text-ink-3">
-                    <span>Projected share at deadline</span>
+                    <span>Projected share if voting closed now</span>
                     <span className="text-terracotta tabular-nums">
+                      {((percentOfPool / 100) * framework.config.total_pool_amount).toFixed(2)}{' '}
                       {framework.config.resource_symbol}
-                      {((percentOfPool / 100) * framework.config.total_pool_amount).toFixed(2)}
                       <span className="text-ink-3 ml-2">
                         ({percentOfPool.toFixed(1)}% of pool)
                       </span>
@@ -435,7 +435,7 @@ export default function VotingPage() {
               Submit this ballot?
             </DialogTitle>
             <DialogDescription className="font-serif text-[15px] text-ink-2">
-              Here&apos;s what you&apos;re signing your name to:
+              Here&apos;s your final allocation:
             </DialogDescription>
           </DialogHeader>
 
@@ -468,7 +468,7 @@ export default function VotingPage() {
               onClick={() => setShowConfirmDialog(false)}
               className="btn-paper"
             >
-              Hold on
+              Cancel
             </button>
             <button
               type="button"

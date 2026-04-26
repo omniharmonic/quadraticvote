@@ -54,7 +54,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-paper">
         <Navigation />
         <div className="mx-auto max-w-5xl px-5 md:px-8 py-20 font-mono text-[11px] uppercase tracking-widest text-ink-3">
-          Opening the studio…
+          Loading…
         </div>
       </div>
     );
@@ -82,17 +82,16 @@ export default function AdminDashboard() {
         <div className="relative mx-auto max-w-7xl px-5 md:px-8 py-14 md:py-20">
           <div className="flex items-end justify-between flex-wrap gap-6">
             <div>
-              <SectionLabel>Editor&apos;s desk</SectionLabel>
+              <SectionLabel>Dashboard</SectionLabel>
               <h1 className="mt-3 font-display text-[44px] sm:text-[56px] leading-[1.02] tracking-[-0.02em] text-ink anim-ink text-balance">
                 Welcome back, {(user.email || '').split('@')[0]}.
               </h1>
               <p className="mt-4 max-w-xl font-serif text-[17px] text-ink-2 leading-snug anim-ink [animation-delay:120ms]">
-                Your drafting table. Pick up where you left off, or pull a
-                fresh sheet.
+                Your events. Pick up where you left off, or start a new one.
               </p>
             </div>
             <Stamp tone="blueprint" rotate={-2}>
-              Studio · {events.length} on file
+              {events.length} event{events.length === 1 ? '' : 's'}
             </Stamp>
           </div>
         </div>
@@ -105,8 +104,8 @@ export default function AdminDashboard() {
           <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-5">
             <ActionCard
               n={1}
-              title="Draft a new event"
-              body="A blank sheet, a fresh question. Six steps from idea to live ballot."
+              title="Create a new event"
+              body="Six steps from idea to live ballot."
               href="/events/create"
               accent="blueprint"
               cta="New event"
@@ -115,7 +114,7 @@ export default function AdminDashboard() {
             <ActionCard
               n={2}
               title="Review proposals"
-              body="The community sent ideas. Approve them onto the slate, or send them back."
+              body="Approve community-submitted proposals as voting options, or send them back."
               href="/admin/proposals"
               accent="terracotta"
               cta="Open queue"
@@ -124,7 +123,7 @@ export default function AdminDashboard() {
             <ActionCard
               n={3}
               title="Accept an admin invite"
-              body="Someone shared an event with you. Drop in the code to take a seat."
+              body="Have a code from another organizer? Use it to gain access to a shared event."
               href="/admin/invite"
               accent="sage"
               cta="Use code"
@@ -137,7 +136,7 @@ export default function AdminDashboard() {
         <section>
           <div className="flex items-end justify-between flex-wrap gap-3 mb-5">
             <div>
-              <SectionLabel number={2}>On your desk</SectionLabel>
+              <SectionLabel number={2}>Your events</SectionLabel>
               <h2 className="mt-3 font-display text-3xl text-ink leading-tight">
                 Events you can manage.
               </h2>
@@ -154,19 +153,19 @@ export default function AdminDashboard() {
 
           {eventsLoading ? (
             <div className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
-              Loading from the cabinet…
+              Loading your events…
             </div>
           ) : events.length === 0 ? (
             <SchematicCard className="p-12 text-center">
               <Sqrt size="md" className="mx-auto opacity-30" />
               <p className="mt-4 font-display text-2xl text-ink">
-                Your desk is clear.
+                No events yet.
               </p>
               <p className="mt-2 font-serif text-ink-2 max-w-md mx-auto">
-                Draft your first event or accept an invite from another organizer.
+                Create your first event, or accept an invite from another organizer.
               </p>
               <Link href="/events/create" className="btn-ink mt-6 inline-flex">
-                Draft an event
+                Create an event
               </Link>
             </SchematicCard>
           ) : (

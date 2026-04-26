@@ -13,7 +13,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -22,13 +21,9 @@ import {
   Copy,
   ExternalLink,
   Users,
-  Send,
   CheckCircle,
   Clock,
-  AlertCircle,
-  Download,
   Upload,
-  Trash2
 } from 'lucide-react';
 import Navigation from '@/components/layout/navigation';
 
@@ -72,16 +67,16 @@ export default function InviteManagementPage() {
     email: '',
     inviteType: 'voting' as 'voting' | 'proposal' | 'both',
     count: 1,
-    sendEmail: true
   });
 
   // Bulk invite form
   const [bulkForm, setBulkForm] = useState({
     emails: '',
     inviteType: 'voting' as 'voting' | 'proposal' | 'both',
-    sendEmail: true,
-    customMessage: ''
   });
+
+  // After creating, jump to the Manage tab so users see the link they need to share.
+  const [activeTab, setActiveTab] = useState<'create' | 'manage'>('create');
 
   useEffect(() => {
     fetchEventAndInvites();
@@ -140,8 +135,8 @@ export default function InviteManagementPage() {
 
       if (response.ok) {
         toast({
-          title: 'Invites created successfully!',
-          description: `${singleForm.count} invite(s) created${singleForm.sendEmail ? ' and email(s) sent' : ''}.`,
+          title: `Invite${singleForm.count > 1 ? 's' : ''} created`,
+          description: 'Copy the link from the Manage tab and share it.',
         });
 
         // Reset form
@@ -149,11 +144,11 @@ export default function InviteManagementPage() {
           email: '',
           inviteType: 'voting',
           count: 1,
-          sendEmail: true
         });
 
-        // Refresh invites
-        fetchEventAndInvites();
+        // Refresh and jump to Manage so the link is immediately visible.
+        await fetchEventAndInvites();
+        setActiveTab('manage');
       } else {
         throw new Error(data.message || 'Failed to create invites');
       }
@@ -192,8 +187,6 @@ export default function InviteManagementPage() {
             email,
             inviteType: bulkForm.inviteType,
             count: 1,
-            sendEmail: bulkForm.sendEmail,
-            customMessage: bulkForm.customMessage
           }),
         })
       );
@@ -203,21 +196,22 @@ export default function InviteManagementPage() {
       const failed = responses.length - successful;
 
       toast({
-        title: 'Bulk invites processed',
-        description: `${successful} invites created successfully${failed > 0 ? `, ${failed} failed` : ''}.`,
+        title: 'Bulk invites created',
+        description:
+          `${successful} link${successful === 1 ? '' : 's'} ready to share` +
+          (failed > 0 ? `, ${failed} failed` : '') + '.',
       });
 
       // Reset form
       setBulkForm({
         emails: '',
         inviteType: 'voting',
-        sendEmail: true,
-        customMessage: ''
       });
       setShowBulkDialog(false);
 
-      // Refresh invites
-      fetchEventAndInvites();
+      // Refresh and jump to Manage tab.
+      await fetchEventAndInvites();
+      setActiveTab('manage');
     } catch (error) {
       toast({
         title: 'Error',
@@ -306,11 +300,18 @@ export default function InviteManagementPage() {
 
       <div className="container mx-auto py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Invite Management</h1>
-          <p className="text-gray-600">
-            Create and manage invites for: <span className="font-medium">{event.title}</span>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-ink mb-2">Invites</h1>
+          <p className="text-ink-2">
+            Manage invite links for: <span className="font-medium">{event.title}</span>
           </p>
+        </div>
+
+        {/* Honest banner — we don't actually send emails */}
+        <div className="mb-8 border border-blueprint/30 bg-blueprint/8 rounded-[3px] px-4 py-3 font-serif text-[14.5px] text-ink-2 leading-snug">
+          <strong className="text-ink">Heads up:</strong> we don&apos;t send emails (yet).
+          Each invite generates a unique link — copy it from the Manage tab and
+          share it however your community talks (email, Slack, Discord, DMs).
         </div>
 
         {/* Stats */}
@@ -362,10 +363,14 @@ export default function InviteManagementPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="create" className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as 'create' | 'manage')}
+          className="space-y-6"
+        >
           <TabsList>
-            <TabsTrigger value="create">Create Invites</TabsTrigger>
-            <TabsTrigger value="manage">Manage Invites ({invites.length})</TabsTrigger>
+            <TabsTrigger value="create">Create invites</TabsTrigger>
+            <TabsTrigger value="manage">Manage invites ({invites.length})</TabsTrigger>
           </TabsList>
 
           {/* Create Invites Tab */}
@@ -376,10 +381,10 @@ export default function InviteManagementPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Mail className="h-5 w-5" />
-                    Single Invite
+                    Single invite
                   </CardTitle>
                   <CardDescription>
-                    Create one or more invites for a specific email address
+                    Generate a unique invite link for one person.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -427,15 +432,6 @@ export default function InviteManagementPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="sendEmail"
-                        checked={singleForm.sendEmail}
-                        onCheckedChange={(checked) => setSingleForm({ ...singleForm, sendEmail: checked })}
-                      />
-                      <Label htmlFor="sendEmail">Send email automatically</Label>
-                    </div>
-
                     <Button
                       type="submit"
                       className="w-full"
@@ -446,7 +442,7 @@ export default function InviteManagementPage() {
                       ) : (
                         <>
                           <Plus className="w-4 h-4 mr-2" />
-                          Create Invite{singleForm.count > 1 ? 's' : ''}
+                          Create invite{singleForm.count > 1 ? 's' : ''}
                         </>
                       )}
                     </Button>
@@ -459,10 +455,11 @@ export default function InviteManagementPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="h-5 w-5" />
-                    Bulk Invites
+                    Bulk invites
                   </CardTitle>
                   <CardDescription>
-                    Create invites for multiple email addresses at once
+                    Generate links for many people at once. Paste a list of
+                    emails — each one gets its own unique link.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -472,15 +469,8 @@ export default function InviteManagementPage() {
                     variant="outline"
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    Create Bulk Invites
+                    Paste email list
                   </Button>
-
-                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      <strong>Tip:</strong> Bulk invites allow you to send invites to multiple people at once.
-                      You can paste email addresses or upload a list.
-                    </p>
-                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -489,24 +479,20 @@ export default function InviteManagementPage() {
             {invites.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
+                  <CardTitle>Quick actions</CardTitle>
                   <CardDescription>
-                    Useful actions for managing your invites
+                    Copy every invite link at once, or jump to the manage tab to copy one at a time.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2 flex-wrap">
                     <Button variant="outline" onClick={copyAllLinks}>
                       <Copy className="w-4 h-4 mr-2" />
-                      Copy All Links
+                      Copy all links
                     </Button>
-                    <Button variant="outline">
-                      <Download className="w-4 h-4 mr-2" />
-                      Export CSV
-                    </Button>
-                    <Button variant="outline">
-                      <Send className="w-4 h-4 mr-2" />
-                      Resend Emails
+                    <Button variant="outline" onClick={() => setActiveTab('manage')}>
+                      <Mail className="w-4 h-4 mr-2" />
+                      Open manage tab
                     </Button>
                   </div>
                 </CardContent>
@@ -519,77 +505,65 @@ export default function InviteManagementPage() {
             {invites.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
-                  <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No invites yet</h3>
-                  <p className="text-gray-600 mb-4">
-                    Create your first invite to get started with participant recruitment.
+                  <Mail className="h-12 w-12 text-ink-3 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-ink mb-2">No invites yet</h3>
+                  <p className="text-ink-2 mb-4">
+                    Create an invite to generate a shareable link.
                   </p>
-                  <Button onClick={() => {
-                    const createTab = document.querySelector('[data-value="create"]') as HTMLElement;
-                    if (createTab) {
-                      createTab.click();
-                    }
-                  }}>
-                    Create First Invite
+                  <Button onClick={() => setActiveTab('create')}>
+                    Create first invite
                   </Button>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-4">
-                {invites.map((invite) => (
-                  <Card key={invite.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="font-medium text-gray-900">{invite.email}</span>
-                            {getInviteStatus(invite)}
-                            <Badge variant="outline">{getInviteTypeDisplay(invite.inviteType)}</Badge>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span>Code: {invite.code}</span>
-                            {invite.usedAt && (
-                              <>
-                                <span>•</span>
-                                <span>Opened: {new Date(invite.usedAt).toLocaleDateString()}</span>
-                              </>
-                            )}
-                            {invite.voteSubmittedAt && (
-                              <>
-                                <span>•</span>
-                                <span>Voted: {new Date(invite.voteSubmittedAt).toLocaleDateString()}</span>
-                              </>
-                            )}
-                          </div>
+                {invites.map((invite) => {
+                  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+                  const link = `${baseUrl}/events/${eventId}/vote?code=${invite.code}`;
+                  return (
+                    <Card key={invite.id}>
+                      <CardContent className="p-6 space-y-3">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="font-medium text-ink">{invite.email}</span>
+                          {getInviteStatus(invite)}
+                          <Badge variant="outline">{getInviteTypeDisplay(invite.inviteType)}</Badge>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        {/* The link IS the share artifact — make it the prominent thing */}
+                        <div className="flex items-center gap-2 border border-ink/20 bg-paper-2/50 rounded-[3px] px-3 py-2">
+                          <code className="flex-1 truncate font-mono text-[12.5px] text-ink-2">
+                            {link}
+                          </code>
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => copyInviteLink(invite.code)}
                           >
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copy Link
+                            <Copy className="w-4 h-4 mr-1" />
+                            Copy
                           </Button>
-
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => {
-                              const baseUrl = window.location.origin;
-                              const link = `${baseUrl}/events/${eventId}/vote?code=${invite.code}`;
-                              window.open(link, '_blank');
-                            }}
+                            onClick={() => window.open(link, '_blank')}
+                            title="Preview as voter"
                           >
                             <ExternalLink className="w-4 h-4" />
                           </Button>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+
+                        <div className="flex items-center gap-3 text-sm text-ink-3 flex-wrap">
+                          {invite.usedAt && (
+                            <span>Opened: {new Date(invite.usedAt).toLocaleDateString()}</span>
+                          )}
+                          {invite.voteSubmittedAt && (
+                            <span>Voted: {new Date(invite.voteSubmittedAt).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -600,15 +574,16 @@ export default function InviteManagementPage() {
       <Dialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create Bulk Invites</DialogTitle>
+            <DialogTitle>Create bulk invites</DialogTitle>
             <DialogDescription>
-              Enter email addresses (one per line) to create multiple invites at once.
+              Paste a list of email addresses (one per line). We&apos;ll generate
+              a unique invite link for each one.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="emails">Email Addresses *</Label>
+              <Label htmlFor="emails">Email addresses *</Label>
               <Textarea
                 id="emails"
                 value={bulkForm.emails}
@@ -616,51 +591,27 @@ export default function InviteManagementPage() {
                 placeholder={`alice@example.com\nbob@example.com\ncharlie@example.com`}
                 rows={8}
               />
-              <p className="text-sm text-gray-500">
-                Enter one email address per line. Invalid emails will be skipped.
+              <p className="text-sm text-ink-3">
+                One per line. Invalid lines are skipped.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Invite Type</Label>
-                <Select
-                  value={bulkForm.inviteType}
-                  onValueChange={(value: any) => setBulkForm({ ...bulkForm, inviteType: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="voting">Voting Only</SelectItem>
-                    <SelectItem value="proposal">Proposals Only</SelectItem>
-                    <SelectItem value="both">Voting & Proposals</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center space-x-2 pt-6">
-                <Switch
-                  id="bulkSendEmail"
-                  checked={bulkForm.sendEmail}
-                  onCheckedChange={(checked) => setBulkForm({ ...bulkForm, sendEmail: checked })}
-                />
-                <Label htmlFor="bulkSendEmail">Send emails automatically</Label>
-              </div>
+            <div className="space-y-2">
+              <Label>Invite type</Label>
+              <Select
+                value={bulkForm.inviteType}
+                onValueChange={(value: any) => setBulkForm({ ...bulkForm, inviteType: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="voting">Voting only</SelectItem>
+                  <SelectItem value="proposal">Proposals only</SelectItem>
+                  <SelectItem value="both">Voting &amp; proposals</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-
-            {bulkForm.sendEmail && (
-              <div className="space-y-2">
-                <Label htmlFor="customMessage">Custom Message (optional)</Label>
-                <Textarea
-                  id="customMessage"
-                  value={bulkForm.customMessage}
-                  onChange={(e) => setBulkForm({ ...bulkForm, customMessage: e.target.value })}
-                  placeholder="Add a personal message to the invite emails..."
-                  rows={3}
-                />
-              </div>
-            )}
           </div>
 
           <DialogFooter>
@@ -671,7 +622,7 @@ export default function InviteManagementPage() {
               onClick={handleCreateBulk}
               disabled={isCreating || !bulkForm.emails.trim()}
             >
-              {isCreating ? 'Creating...' : 'Create Invites'}
+              {isCreating ? 'Creating...' : 'Create invites'}
             </Button>
           </DialogFooter>
         </DialogContent>

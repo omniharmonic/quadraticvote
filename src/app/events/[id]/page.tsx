@@ -16,14 +16,17 @@ import {
 } from '@/components/schematic';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const dynamic = 'force-dynamic';
 
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user, isEventAdmin } = useAuth();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,13 +42,27 @@ export default function EventDetailPage() {
     };
   }, [params.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!user || !params.id) {
+      setIsAdmin(false);
+      return;
+    }
+    isEventAdmin(params.id as string)
+      .then((ok) => !cancelled && setIsAdmin(ok))
+      .catch(() => !cancelled && setIsAdmin(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [user, params.id, isEventAdmin]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-paper">
         <Navigation />
         <div className="mx-auto max-w-5xl px-5 md:px-8 py-20">
           <div className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
-            Loading file…
+            Loading event…
           </div>
         </div>
       </div>
@@ -58,15 +75,15 @@ export default function EventDetailPage() {
         <Navigation />
         <div className="mx-auto max-w-md px-5 md:px-8 py-20 text-center">
           <Sqrt size="md" className="opacity-30" />
-          <h1 className="mt-4 font-display text-3xl text-ink">File not found.</h1>
+          <h1 className="mt-4 font-display text-3xl text-ink">Event not found.</h1>
           <p className="mt-2 font-serif text-ink-2">
-            We couldn&apos;t locate that event in the cabinet.
+            We couldn&apos;t find that event. It may have been removed or the link is wrong.
           </p>
           <button
             className="btn-ink mt-6"
             onClick={() => router.push('/')}
           >
-            Back to slate
+            Back to home
           </button>
         </div>
       </div>
@@ -88,7 +105,11 @@ export default function EventDetailPage() {
 
   return (
     <div className="min-h-screen bg-paper text-ink">
-      <Navigation eventId={params.id as string} eventTitle={event.title} />
+      <Navigation
+        eventId={params.id as string}
+        eventTitle={event.title}
+        showAdminNav={isAdmin}
+      />
 
       {/* HEADER */}
       <section className="relative overflow-hidden border-b border-ink/15">
@@ -143,8 +164,8 @@ export default function EventDetailPage() {
             <SpecBlock label="Visibility">{event.visibility}</SpecBlock>
             {!isBinary && config.total_pool_amount && (
               <SpecBlock label="Pool">
-                {config.resource_symbol} {Number(config.total_pool_amount).toLocaleString()}{' '}
-                {config.resource_name}
+                {Number(config.total_pool_amount).toLocaleString()}{' '}
+                {config.resource_symbol || config.resource_name}
               </SpecBlock>
             )}
           </div>
@@ -165,7 +186,7 @@ export default function EventDetailPage() {
                 <p className="mt-2 font-serif text-[16px] text-ink-2 leading-snug max-w-2xl text-pretty">
                   Voters allocate their credits across the options. Each
                   vote counts as <span className="font-display italic">√credits</span>.
-                  When the deadline hits, the schematic below decides who&apos;s in.
+                  When voting closes, the rule below selects which options win.
                 </p>
 
                 <div className="mt-5 inline-flex items-center gap-3 px-4 py-3 border border-blueprint/30 bg-blueprint/8 rounded-[3px]">
@@ -200,10 +221,9 @@ export default function EventDetailPage() {
                     Pool
                   </span>
                   <span className="font-display text-ink text-2xl leading-none">
-                    {config.resource_symbol}
                     {Number(config.total_pool_amount).toLocaleString()}{' '}
                     <span className="text-base text-ink-3">
-                      {config.resource_name}
+                      {config.resource_symbol || config.resource_name}
                     </span>
                   </span>
                 </div>
@@ -214,9 +234,9 @@ export default function EventDetailPage() {
           {/* Options */}
           <SchematicCard className="p-7 md:p-9">
             <div className="flex items-baseline justify-between">
-              <SectionLabel number={2}>Options on the slate</SectionLabel>
+              <SectionLabel number={2}>Voting options</SectionLabel>
               <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
-                {event.options?.length ?? 0} on file
+                {event.options?.length ?? 0} total
               </span>
             </div>
 
@@ -225,7 +245,7 @@ export default function EventDetailPage() {
                 <p className="font-display text-2xl text-ink">No options yet.</p>
                 <p className="mt-2 font-serif text-ink-2">
                   {acceptsProposals
-                    ? 'The community gets to write this slate. Submit the first proposal.'
+                    ? 'Voters propose the options here. Be the first to submit one.'
                     : 'The organizer hasn\'t added any options yet.'}
                 </p>
               </div>
@@ -248,7 +268,7 @@ export default function EventDetailPage() {
                       )}
                       {opt.source === 'community' && (
                         <span className="mt-2 inline-block font-mono text-[10px] uppercase tracking-widest text-terracotta">
-                          From the community
+                          Community submitted
                         </span>
                       )}
                     </div>
@@ -261,6 +281,33 @@ export default function EventDetailPage() {
 
         {/* Right: actions rail */}
         <aside className="col-span-12 lg:col-span-4 space-y-6">
+          {/* Admin shortcut — only visible to event admins */}
+          {isAdmin && (
+            <SchematicCard accent className="p-6">
+              <div className="flex items-baseline justify-between">
+                <SectionLabel>You manage this event</SectionLabel>
+                <Stamp tone="blueprint" rotate={-2}>Admin</Stamp>
+              </div>
+              <p className="mt-3 font-serif text-[14.5px] text-ink-2 leading-snug">
+                Edit settings, review proposals, send invites, or check analytics.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Link
+                  href={`/admin/events/${event.id}`}
+                  className="btn-ink text-center"
+                >
+                  Open dashboard →
+                </Link>
+                <Link
+                  href={`/admin/events/${event.id}/invites`}
+                  className="btn-paper text-center"
+                >
+                  Invites
+                </Link>
+              </div>
+            </SchematicCard>
+          )}
+
           {/* Vote CTA */}
           <SchematicCard
             accent
@@ -281,8 +328,8 @@ export default function EventDetailPage() {
               How will you spend them?
             </h3>
             <p className="mt-2 font-serif text-[14.5px] text-ink-2 leading-snug">
-              Allocate across the options. Concentration costs you — that&apos;s
-              the point.
+              Spread credits across the options you support. Each vote
+              counts as the square root of credits — concentration costs more.
             </p>
             <Link
               href={`/events/${event.id}/vote`}
@@ -307,7 +354,7 @@ export default function EventDetailPage() {
                 </span>
               </div>
               <h3 className="mt-3 font-display text-2xl text-ink leading-tight">
-                Add your own to the slate.
+                Suggest a voting option.
               </h3>
               <p className="mt-2 font-serif text-[14.5px] text-ink-2 leading-snug">
                 The organizer reviews proposals. Approved ones become
@@ -317,24 +364,24 @@ export default function EventDetailPage() {
                 href={`/events/${event.id}/propose`}
                 className="btn-terra mt-5 w-full"
               >
-                Send it in →
+                Submit a proposal →
               </Link>
             </SchematicCard>
           )}
 
           {/* Results */}
           <SchematicCard className="p-6">
-            <SectionLabel>Read the room</SectionLabel>
+            <SectionLabel>Results</SectionLabel>
             <p className="mt-3 font-serif text-[14.5px] text-ink-2 leading-snug">
               {event.showResultsDuringVoting
-                ? 'Live tally is visible to anyone with the link.'
-                : 'Final tally posts when voting closes.'}
+                ? 'Live results are visible to anyone with the link.'
+                : 'Results post when voting closes.'}
             </p>
             <Link
               href={`/events/${event.id}/results`}
               className="btn-paper mt-4 w-full"
             >
-              View tally
+              View results
             </Link>
           </SchematicCard>
         </aside>

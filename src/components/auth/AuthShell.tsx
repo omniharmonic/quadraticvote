@@ -50,12 +50,14 @@ export function AuthShell({
             <hr className="ink-rule mt-8" />
 
             <p className="font-display italic text-[22px] text-ink leading-snug max-w-[26ch] text-balance">
-              A drafting table for civic decisions — measured, lit, and warm.
+              Quadratic voting for groups making decisions together.
             </p>
 
             <p className="mt-6 font-serif text-[15px] text-ink-2 leading-relaxed max-w-[34ch]">
-              Allocate credits. Count by <span className="font-display italic">√</span>. Turn
-              opinion into outcome without letting the loudest voice drown the rest.
+              Each voter gets the same credits. Votes count as
+              <span className="font-display italic"> √ </span>
+              of credits spent — so the loudest voice can&apos;t drown out
+              the rest.
             </p>
           </div>
 

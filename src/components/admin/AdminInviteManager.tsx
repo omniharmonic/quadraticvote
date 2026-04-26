@@ -93,7 +93,7 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
         throw new Error(data.error || 'Failed to send invitation');
       }
 
-      setSuccess('Admin invitation sent successfully!');
+      setSuccess('Invite created. Copy the link below and send it to them.');
       setInviteEmail('');
       setInviteRole('admin');
 
@@ -123,9 +123,13 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
 
   return (
     <div className="bg-white rounded-lg border p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Admin Management
+      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+        Admin invitations
       </h3>
+      <p className="text-sm text-gray-600 mb-4">
+        Each invite generates a link. We don&apos;t send emails — copy the
+        link and share it however your community talks.
+      </p>
 
       {/* Invite Form */}
       <form onSubmit={sendInvite} className="mb-6">
@@ -166,7 +170,7 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
               disabled={isInviting || !inviteEmail.trim()}
               className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isInviting ? 'Sending...' : 'Send Invite'}
+              {isInviting ? 'Creating...' : 'Create invite link'}
             </button>
           </div>
         </div>
@@ -188,46 +192,65 @@ export function AdminInviteManager({ eventId }: AdminInviteManagerProps) {
       {/* Invitations List */}
       <div>
         <h4 className="text-md font-medium text-gray-900 mb-3">
-          Pending Invitations
+          Pending invitations
         </h4>
 
         {invitations.length === 0 ? (
           <p className="text-gray-500 text-sm">No pending invitations</p>
         ) : (
           <div className="space-y-3">
-            {invitations.map((invitation) => (
-              <div
-                key={invitation.id}
-                className="border border-gray-200 rounded-md p-3"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {invitation.email}
+            {invitations.map((invitation) => {
+              const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+              const link = `${baseUrl}/admin/invite?code=${invitation.inviteCode}`;
+              return (
+                <div
+                  key={invitation.id}
+                  className="border border-gray-200 rounded-md p-3 space-y-2"
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900 truncate">
+                        {invitation.email}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Role: {invitation.role} ·
+                        Created: {new Date(invitation.sentAt).toLocaleDateString()}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      Role: {invitation.role} •
-                      Sent: {new Date(invitation.sentAt).toLocaleDateString()}
-                    </div>
-                    <div className="text-xs font-mono text-gray-400 mt-1">
-                      Code: {invitation.inviteCode}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      invitation.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : invitation.status === 'accepted'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
+                    <span
+                      className={`shrink-0 px-2 py-1 text-xs font-semibold rounded-full ${
+                        invitation.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : invitation.status === 'accepted'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
                       {invitation.status}
                     </span>
                   </div>
+
+                  {invitation.status === 'pending' && (
+                    <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded px-2 py-1.5">
+                      <code className="flex-1 truncate text-xs font-mono text-gray-700">
+                        {link}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(link);
+                          setSuccess('Invite link copied.');
+                          setTimeout(() => setSuccess(null), 2000);
+                        }}
+                        className="shrink-0 text-xs font-medium text-blue-700 hover:text-blue-900 px-2 py-1 rounded hover:bg-blue-50"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
