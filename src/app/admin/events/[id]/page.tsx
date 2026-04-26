@@ -113,7 +113,7 @@ export default function EventManagementPage() {
     return (
       <div>
         <Navigation />
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-paper text-ink flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
             <p className="text-gray-600">Loading event management...</p>
@@ -128,7 +128,7 @@ export default function EventManagementPage() {
   const eventStatus = getEventStatus();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper text-ink">
       <Navigation
         eventId={eventId}
         eventTitle={event.title}

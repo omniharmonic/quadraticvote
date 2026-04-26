@@ -4,17 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { AuthShell, FieldRow } from '@/components/auth/AuthShell';
+import { Stamp } from '@/components/schematic';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Password reset landing page.
- *
- * Supabase emails the user a link with a `code` query param (or hash with
- * an access_token). On load, the supabase client picks up the recovery
- * session via onAuthStateChange. Once we have a session, we let the user
- * pick a new password and call updateUser().
- */
 export default function ResetPasswordPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
@@ -25,8 +19,6 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // The Supabase JS client auto-detects the recovery code on this page.
-    // We just listen for the PASSWORD_RECOVERY event to know we're ready.
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) setReady(true);
     });
@@ -39,85 +31,93 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-    if (password !== confirm) {
-      setError('Passwords do not match');
-      return;
-    }
+    if (password.length < 6) return setError('Password must be at least 6 characters.');
+    if (password !== confirm) return setError('Passwords do not match.');
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
+    if (error) return setError(error.message);
     setDone(true);
     setTimeout(() => router.push('/auth/login'), 2500);
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Choose a new password
-          </h2>
+  if (done) {
+    return (
+      <AuthShell eyebrow="Done" title="Password updated.">
+        <div className="schematic schematic-tick p-6">
+          <Stamp tone="sage" rotate={-2}>
+            Filed · Sealed
+          </Stamp>
+          <p className="mt-4 font-serif text-[15px] text-ink-2">
+            Redirecting you to sign in.
+          </p>
         </div>
+      </AuthShell>
+    );
+  }
 
-        {done ? (
-          <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
-            Password updated. Redirecting to sign in…
+  if (!ready) {
+    return (
+      <AuthShell eyebrow="Reset" title="Verifying your reset link…" lede="Hang on a moment while we check the seal on this envelope.">
+        <p className="font-serif text-[14.5px] text-ink-3">
+          Taking too long? The link may have expired.{' '}
+          <Link
+            href="/auth/forgot-password"
+            className="text-blueprint underline underline-offset-4 hover:text-ink"
+          >
+            Request a new one →
+          </Link>
+        </p>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell
+      eyebrow="Reset"
+      title="Choose a new password."
+      lede="Pick something only you know. We'll seal the envelope and you can sign in again."
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <FieldRow label="New password" htmlFor="new" hint={<span>Min. 6 chars</span>}>
+          <input
+            id="new"
+            type="password"
+            autoComplete="new-password"
+            required
+            className="field w-full"
+            placeholder="• • • • • • • •"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </FieldRow>
+
+        <FieldRow label="Confirm" htmlFor="confirm">
+          <input
+            id="confirm"
+            type="password"
+            autoComplete="new-password"
+            required
+            className="field w-full"
+            placeholder="• • • • • • • •"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+        </FieldRow>
+
+        {error && (
+          <div
+            role="alert"
+            className="border border-wine/30 bg-wine/8 px-3 py-2 text-[14px] text-wine font-serif"
+          >
+            {error}
           </div>
-        ) : !ready ? (
-          <div className="rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
-            Verifying your reset link…
-            <div className="mt-3">
-              If this takes more than a few seconds, the link may have expired.
-              <Link href="/auth/forgot-password" className="ml-1 font-medium text-indigo-600 hover:text-indigo-500">
-                Request a new one
-              </Link>.
-            </div>
-          </div>
-        ) : (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-3">
-              <input
-                type="password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-md block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="New password"
-              />
-              <input
-                type="password"
-                autoComplete="new-password"
-                required
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                className="appearance-none rounded-md block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Confirm new password"
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {loading ? 'Updating…' : 'Update password'}
-            </button>
-          </form>
         )}
-      </div>
-    </div>
+
+        <button type="submit" disabled={loading} className="btn-ink w-full">
+          {loading ? 'Updating…' : 'Update password'}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

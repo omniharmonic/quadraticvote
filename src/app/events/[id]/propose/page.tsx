@@ -1,454 +1,309 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { toast } from '@/hooks/use-toast';
-import { CheckCircle, AlertCircle, FileText, Send } from 'lucide-react';
+import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Navigation from '@/components/layout/navigation';
-import type { Event } from '@/lib/types';
+import {
+  GraphPaper,
+  SectionLabel,
+  SchematicCard,
+  Stamp,
+  Sqrt,
+} from '@/components/schematic';
+import { FieldRow } from '@/components/auth/AuthShell';
+import { toast } from '@/hooks/use-toast';
+
+export const dynamic = 'force-dynamic';
 
 export default function ProposalSubmissionPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const eventId = params.id as string;
   const inviteCode = searchParams.get('code');
 
-  const [event, setEvent] = useState<Event | null>(null);
+  const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     title: '',
     description: '',
-    imageUrl: '',
     submitterEmail: '',
     submitterWallet: '',
     payoutWallet: '',
-    inviteCode: inviteCode || ''
+    inviteCode: inviteCode || '',
   });
 
   useEffect(() => {
-    fetchEvent();
+    let cancelled = false;
+    fetch(`/api/events/${eventId}`)
+      .then((r) => r.json())
+      .then((d) => !cancelled && setEvent(d?.event ?? null))
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
   }, [eventId]);
-
-  const fetchEvent = async () => {
-    try {
-      const response = await fetch(`/api/events/${eventId}`);
-      const data = await response.json();
-      if (data.success) {
-        setEvent(data.event);
-      } else {
-        setError('Event not found');
-      }
-    } catch (error) {
-      setError('Failed to load event');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
     setError('');
-
+    setSubmitting(true);
     try {
-      const response = await fetch('/api/proposals', {
+      const r = await fetch('/api/proposals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          eventId
-        })
+        body: JSON.stringify({ ...form, eventId }),
       });
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast({
-          title: 'Proposal submitted successfully!',
-          description: 'Your proposal is now under review.',
-        });
+      const d = await r.json();
+      if (d.success) {
+        toast({ title: 'Proposal sent.', description: 'The organizer will review it.' });
         setSubmitted(true);
       } else {
-        const errorMessage = data.error || data.message || 'Failed to submit proposal';
-        setError(errorMessage);
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive',
-        });
+        const msg = d.error || d.message || 'Submission failed.';
+        setError(msg);
+        toast({ title: 'Error', description: msg, variant: 'destructive' });
       }
-    } catch (error) {
-      const errorMessage = 'Failed to submit proposal';
-      setError(errorMessage);
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+    } catch {
+      setError('Submission failed.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
 
   if (loading) {
     return (
-      <>
+      <div className="min-h-screen bg-paper">
         <Navigation />
-        <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto py-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-              <p className="text-gray-600">Loading proposal submission...</p>
-            </div>
-          </div>
+        <div className="mx-auto max-w-3xl px-5 md:px-8 py-20 font-mono text-[11px] uppercase tracking-widest text-ink-3">
+          Opening the proposal book…
         </div>
-      </>
+      </div>
     );
   }
 
   if (!event) {
     return (
-      <>
+      <div className="min-h-screen bg-paper">
         <Navigation />
-        <div className="min-h-screen bg-gray-50">
-          <div className="container mx-auto py-8">
-            <Card className="max-w-2xl mx-auto">
-              <CardHeader className="text-center">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <CardTitle>Event Not Found</CardTitle>
-                <CardDescription>
-                  The event was not found or does not accept community proposals.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <Button onClick={() => router.push('/')} variant="outline">
-                  Back to Home
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto py-8">
-          <Card className="max-w-2xl mx-auto">
-            <CardContent className="text-center py-8">
-              <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Proposal Submitted Successfully!</h2>
-              <p className="text-gray-600 mb-4">
-                Your proposal has been submitted and is pending review by moderators.
-              </p>
-              <p className="text-sm text-gray-500 mb-6">
-                You will be notified once your proposal has been reviewed.
-              </p>
-              <div className="flex gap-3 justify-center">
-                <Button onClick={() => router.push(`/events/${eventId}`)} variant="outline">
-                  Back to Event
-                </Button>
-                <Button onClick={() => router.push('/')}>
-                  Home
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="mx-auto max-w-md px-5 md:px-8 py-20 text-center">
+          <Sqrt size="md" className="opacity-30" />
+          <h1 className="mt-4 font-display text-3xl text-ink">Event not found.</h1>
         </div>
       </div>
     );
   }
 
-  // Check if proposals are enabled for this event
-  if (event.optionMode === 'admin_defined') {
+  const acceptsProposals =
+    event.optionMode === 'community_proposals' || event.optionMode === 'hybrid';
+
+  if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto py-8">
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader className="text-center">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <CardTitle>Proposals Not Enabled</CardTitle>
-              <CardDescription>
-                This event uses admin-defined options. Community proposals are not accepted.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <Button onClick={() => router.push(`/events/${eventId}`)} variant="outline">
-                Back to Event
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="min-h-screen bg-paper text-ink">
+        <Navigation eventTitle={event.title} />
+        <section className="relative overflow-hidden border-b border-ink/15">
+          <GraphPaper aria-hidden className="absolute inset-0 opacity-50" />
+          <div className="relative mx-auto max-w-2xl px-5 md:px-8 py-20 text-center">
+            <Stamp tone="sage" rotate={-2} className="mx-auto mb-6">
+              Filed · Pending review
+            </Stamp>
+            <h1 className="font-display text-[40px] sm:text-[48px] leading-tight text-ink anim-ink text-balance">
+              Your proposal is on the table.
+            </h1>
+            <p className="mt-5 font-serif text-[17px] text-ink-2 leading-snug max-w-lg mx-auto anim-ink [animation-delay:120ms]">
+              The organizer will review it. If approved, it joins the slate
+              and becomes a voting option.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3 anim-ink [animation-delay:240ms]">
+              <Link href={`/events/${eventId}`} className="btn-paper">
+                Back to event
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmitted(false);
+                  setForm({
+                    title: '',
+                    description: '',
+                    submitterEmail: form.submitterEmail,
+                    submitterWallet: form.submitterWallet,
+                    payoutWallet: form.payoutWallet,
+                    inviteCode: form.inviteCode,
+                  });
+                }}
+                className="btn-ink"
+              >
+                Submit another →
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     );
   }
 
   return (
-    <>
-      <Navigation />
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto py-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Submit a Proposal</h1>
-            <p className="text-gray-600 mt-2">
-              Propose an option for: <span className="font-medium">{event.title}</span>
+    <div className="min-h-screen bg-paper text-ink">
+      <Navigation eventTitle={event.title} />
+
+      <section className="relative overflow-hidden border-b border-ink/15">
+        <GraphPaper aria-hidden className="absolute inset-0 opacity-50" />
+        <div className="relative mx-auto max-w-3xl px-5 md:px-8 py-12 md:py-16">
+          <SectionLabel>Submit a proposal</SectionLabel>
+          <h1 className="mt-3 font-display text-[40px] sm:text-[52px] leading-[1.02] tracking-[-0.018em] text-ink anim-ink text-balance">
+            Add a card to the slate.
+          </h1>
+          <p className="mt-5 max-w-2xl font-serif text-[17px] text-ink-2 leading-snug anim-ink [animation-delay:120ms]">
+            Tell the community what you want them to consider. Be clear,
+            be specific, and include a wallet if there&apos;s a payout. The
+            organizer will review before it goes on the ballot.
+          </p>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-3xl px-5 md:px-8 py-10">
+        {!acceptsProposals && (
+          <SchematicCard className="p-6 mb-8 border-wine/30">
+            <SectionLabel>Heads up</SectionLabel>
+            <p className="mt-3 font-serif text-[15px] text-ink-2">
+              This event isn&apos;t accepting community proposals. The
+              organizer set the slate themselves.
             </p>
-          </div>
+          </SchematicCard>
+        )}
 
-          {/* Event Info */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                About This Event
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{event.title}</h3>
-                  {event.description && (
-                    <p className="text-gray-600 mt-1">{event.description}</p>
-                  )}
-                </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <SchematicCard className="p-6 md:p-7 space-y-5">
+            <SectionLabel number={1}>The proposal</SectionLabel>
 
-                <div className="flex items-center gap-4 text-sm">
-                  <Badge variant="secondary">
-                    {event.decisionFramework?.framework_type === 'binary_selection'
-                      ? 'Binary Selection'
-                      : 'Proportional Distribution'}
-                  </Badge>
-                  <span className="text-gray-600">
-                    {event.creditsPerVoter} credits per voter
-                  </span>
-                </div>
+            <FieldRow label="Title" htmlFor="title" hint={<span>{form.title.length} / 120</span>}>
+              <input
+                id="title"
+                name="title"
+                required
+                maxLength={120}
+                placeholder="Short, plain language"
+                className="field w-full"
+                value={form.title}
+                onChange={set('title')}
+              />
+            </FieldRow>
 
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>Proposal Guidelines:</strong> Anyone can submit proposals for community consideration.
-                    Proposals may require moderation before appearing as voting options.
-                    Make sure your proposal is clear, relevant, and follows community guidelines.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            <FieldRow
+              label="Description"
+              htmlFor="description"
+              hint={<span>Optional — but encouraged</span>}
+            >
+              <textarea
+                id="description"
+                name="description"
+                rows={6}
+                placeholder="What are you proposing? Who benefits? What does success look like?"
+                className="field w-full leading-snug"
+                value={form.description}
+                onChange={set('description')}
+              />
+            </FieldRow>
+          </SchematicCard>
+
+          <SchematicCard className="p-6 md:p-7 space-y-5">
+            <SectionLabel number={2}>About you</SectionLabel>
+
+            <FieldRow label="Your email" htmlFor="email" hint={<span>Hashed before storing</span>}>
+              <input
+                id="email"
+                name="submitterEmail"
+                type="email"
+                required
+                placeholder="you@yourdomain"
+                className="field w-full"
+                value={form.submitterEmail}
+                onChange={set('submitterEmail')}
+              />
+            </FieldRow>
+
+            {event.proposalConfig?.access_control === 'invite_only' && (
+              <FieldRow
+                label="Invite code"
+                htmlFor="invite"
+                hint={<span>From the email you received</span>}
+              >
+                <input
+                  id="invite"
+                  name="inviteCode"
+                  required
+                  placeholder="••••-••••"
+                  className="field w-full font-mono tracking-widest"
+                  value={form.inviteCode}
+                  onChange={set('inviteCode')}
+                />
+              </FieldRow>
+            )}
+          </SchematicCard>
+
+          {/* Wallets — only show for community_proposals events with payout intent */}
+          <SchematicCard className="p-6 md:p-7 space-y-5">
+            <div className="flex items-baseline justify-between">
+              <SectionLabel number={3}>Wallets</SectionLabel>
+              <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+                Optional
+              </span>
+            </div>
+            <p className="font-serif text-[14.5px] text-ink-2 leading-snug">
+              If this proposal might receive a payout, leave the address you want
+              the funds sent to. The contact wallet is only used for verification.
+            </p>
+
+            <FieldRow label="Payout wallet" htmlFor="payout">
+              <input
+                id="payout"
+                name="payoutWallet"
+                placeholder="0x… or yourname.eth"
+                className="field w-full font-mono"
+                value={form.payoutWallet}
+                onChange={set('payoutWallet')}
+              />
+            </FieldRow>
+
+            <FieldRow label="Contact wallet" htmlFor="contact">
+              <input
+                id="contact"
+                name="submitterWallet"
+                placeholder="0x… or yourname.eth"
+                className="field w-full font-mono"
+                value={form.submitterWallet}
+                onChange={set('submitterWallet')}
+              />
+            </FieldRow>
+          </SchematicCard>
 
           {error && (
-            <Alert className="mb-6" variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+            <div
+              role="alert"
+              className="border border-wine/30 bg-wine/8 px-4 py-3 text-[14.5px] text-wine font-serif"
+            >
+              {error}
+            </div>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Proposal</CardTitle>
-              <CardDescription>
-                Fill out the details for your proposal. All fields marked with * are required.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6" data-testid="proposal-form">
-                {/* Title */}
-                <div className="space-y-2">
-                  <Label htmlFor="title">Proposal Title *</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={(e) => handleChange('title', e.target.value)}
-                    placeholder="Enter a clear, descriptive title"
-                    maxLength={100}
-                    required
-                  />
-                  <p className="text-sm text-gray-500">
-                    {formData.title.length}/100 characters
-                  </p>
-                </div>
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={(e) => handleChange('description', e.target.value)}
-                    placeholder="Provide details about your proposal..."
-                    rows={4}
-                    maxLength={1000}
-                  />
-                  <p className="text-sm text-gray-500">
-                    {formData.description.length}/1000 characters
-                  </p>
-                </div>
-
-                {/* Image URL */}
-                <div className="space-y-2">
-                  <Label htmlFor="imageUrl">Image URL (optional)</Label>
-                  <Input
-                    id="imageUrl"
-                    name="imageUrl"
-                    type="url"
-                    value={formData.imageUrl}
-                    onChange={(e) => handleChange('imageUrl', e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  <p className="text-sm text-gray-500">
-                    Add an image to help illustrate your proposal
-                  </p>
-                </div>
-
-                {/* Submitter Info */}
-                <div className="border-t pt-6">
-                  <h3 className="font-medium text-gray-900 mb-4">Contact & Payout Information</h3>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="submitterEmail">Email Address *</Label>
-                      <Input
-                        id="submitterEmail"
-                        name="submitterEmail"
-                        type="email"
-                        value={formData.submitterEmail}
-                        onChange={(e) => handleChange('submitterEmail', e.target.value)}
-                        placeholder="your@email.com"
-                        required
-                      />
-                      <p className="text-sm text-gray-500">
-                        Used for proposal tracking and updates
-                      </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="submitterWallet">Contact Wallet Address (optional)</Label>
-                        <Input
-                          id="submitterWallet"
-                          name="submitterWallet"
-                          value={formData.submitterWallet}
-                          onChange={(e) => handleChange('submitterWallet', e.target.value)}
-                          placeholder="0x... or name.eth"
-                        />
-                        <p className="text-sm text-gray-500">
-                          For token-gated events or verification
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="payoutWallet">Payout Wallet Address (optional)</Label>
-                        <Input
-                          id="payoutWallet"
-                          name="payoutWallet"
-                          value={formData.payoutWallet}
-                          onChange={(e) => handleChange('payoutWallet', e.target.value)}
-                          placeholder="0x... or name.eth"
-                        />
-                        <p className="text-sm text-gray-500">
-                          Where payments should be sent if proposal wins
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Invite Code */}
-                {!inviteCode && (
-                  <div className="space-y-2">
-                    <Label htmlFor="inviteCode">Invite Code (optional)</Label>
-                    <Input
-                      id="inviteCode"
-                      name="inviteCode"
-                      value={formData.inviteCode}
-                      onChange={(e) => handleChange('inviteCode', e.target.value)}
-                      placeholder="Optional - only needed for restricted events"
-                    />
-                    <p className="text-sm text-gray-500">
-                      Most events allow public proposal submission. Only enter a code if specifically required.
-                    </p>
-                  </div>
-                )}
-
-                {/* Preview */}
-                {formData.title && (
-                  <div className="border-t pt-6">
-                    <h3 className="font-medium text-gray-900 mb-4">Preview</h3>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{formData.title}</CardTitle>
-                        {formData.description && (
-                          <CardDescription>{formData.description}</CardDescription>
-                        )}
-                      </CardHeader>
-                      {formData.imageUrl && (
-                        <CardContent>
-                          <img
-                            src={formData.imageUrl}
-                            alt="Proposal"
-                            className="max-w-xs rounded border"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        </CardContent>
-                      )}
-                    </Card>
-                  </div>
-                )}
-
-                {/* Submit */}
-                <div className="flex gap-3 pt-6 border-t">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push(`/events/${eventId}`)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={submitting || !formData.title || !formData.submitterEmail}
-                    className="flex items-center gap-2"
-                  >
-                    {submitting ? (
-                      'Submitting...'
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        Submit Proposal
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-        </div>
-      </div>
-    </>
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+            <Link href={`/events/${eventId}`} className="btn-paper">
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={submitting || !acceptsProposals}
+              className="btn-ink disabled:opacity-50"
+            >
+              {submitting ? 'Sending…' : 'Send for review →'}
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
   );
 }

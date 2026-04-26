@@ -284,7 +284,7 @@ export default function InviteManagementPage() {
 
   if (loading || !event) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-paper text-ink">
         <Navigation />
         <div className="container mx-auto py-8">
           <div className="text-center">
@@ -297,7 +297,7 @@ export default function InviteManagementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper text-ink">
       <Navigation
         eventId={eventId}
         eventTitle={event.title}

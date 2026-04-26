@@ -193,7 +193,7 @@ export default function AdminProposalsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-paper text-ink">
         <Navigation />
         <div className="container mx-auto py-8">
           <div className="text-center">
@@ -206,7 +206,7 @@ export default function AdminProposalsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-paper text-ink">
       <Navigation />
 
       <div className="container mx-auto py-8">

@@ -10,20 +10,65 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
+        display: [
+          'Fraunces',
+          'Tiempos Headline',
+          'Iowan Old Style',
+          'Georgia',
+          'serif',
+        ],
+        serif: [
+          'Newsreader',
+          'Iowan Old Style',
+          'Source Serif Pro',
+          'Georgia',
+          'serif',
+        ],
         sans: [
-          'Inter',
-          'ui-sans-serif',
-          'system-ui',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'Segoe UI',
-          'Roboto',
-          'Helvetica Neue',
-          'Arial',
-          'sans-serif',
+          'Newsreader',
+          'Iowan Old Style',
+          'Source Serif Pro',
+          'Georgia',
+          'serif',
+        ],
+        mono: [
+          'JetBrains Mono',
+          'IBM Plex Mono',
+          'ui-monospace',
+          'SFMono-Regular',
+          'monospace',
         ],
       },
       colors: {
+        // Paper & ink semantic tokens
+        paper: {
+          DEFAULT: 'rgb(var(--paper) / <alpha-value>)',
+          2: 'rgb(var(--paper-2) / <alpha-value>)',
+          3: 'rgb(var(--paper-3) / <alpha-value>)',
+        },
+        ink: {
+          DEFAULT: 'rgb(var(--ink) / <alpha-value>)',
+          2: 'rgb(var(--ink-2) / <alpha-value>)',
+          3: 'rgb(var(--ink-3) / <alpha-value>)',
+          4: 'rgb(var(--ink-4) / <alpha-value>)',
+        },
+        grid: {
+          DEFAULT: 'rgb(var(--grid) / <alpha-value>)',
+          strong: 'rgb(var(--grid-strong) / <alpha-value>)',
+        },
+        blueprint: {
+          DEFAULT: 'rgb(var(--blueprint) / <alpha-value>)',
+          2: 'rgb(var(--blueprint-2) / <alpha-value>)',
+        },
+        terracotta: {
+          DEFAULT: 'rgb(var(--terracotta) / <alpha-value>)',
+          2: 'rgb(var(--terracotta-2) / <alpha-value>)',
+        },
+        sage: 'rgb(var(--sage) / <alpha-value>)',
+        wine: 'rgb(var(--wine) / <alpha-value>)',
+        gold: 'rgb(var(--gold) / <alpha-value>)',
+
+        // shadcn token bridge — keep existing components working
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -63,10 +108,13 @@ const config: Config = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      letterSpacing: {
+        wider: '0.08em',
+        widest: '0.18em',
+      },
     },
   },
   plugins: [],
 };
 
 export default config;
-

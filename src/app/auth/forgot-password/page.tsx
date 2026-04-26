@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthShell, FieldRow } from '@/components/auth/AuthShell';
+import { Stamp } from '@/components/schematic';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,77 +21,89 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       const { error } = await resetPassword(email);
-      if (error) {
-        setError(error.message);
-        return;
-      }
+      if (error) return setError(error.message);
       setSubmitted(true);
     } catch {
-      setError('An unexpected error occurred');
+      setError('Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Reset your password
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your email and we&apos;ll send you a link to reset it.
+  if (submitted) {
+    return (
+      <AuthShell
+        eyebrow="Sent"
+        title="Check your inbox."
+        lede={`If an account exists for that email, a reset link is on its way.`}
+        footnote={
+          <p>
+            <Link
+              href="/auth/login"
+              className="text-blueprint underline underline-offset-4 hover:text-ink"
+            >
+              ← Back to sign in
+            </Link>
+          </p>
+        }
+      >
+        <div className="schematic schematic-tick p-6">
+          <Stamp tone="sage" rotate={-2}>
+            Reset · Pending
+          </Stamp>
+          <p className="mt-4 font-serif text-[15px] text-ink-2">
+            Look for an email at <span className="text-ink font-medium">{email}</span>.
+            Spam folder counts.
           </p>
         </div>
+      </AuthShell>
+    );
+  }
 
-        {submitted ? (
-          <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
-            If an account exists for <strong>{email}</strong>, a reset link is on its way.
-            Check your inbox (and spam folder).
-            <div className="mt-4">
-              <Link href="/auth/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Back to sign in
-              </Link>
-            </div>
+  return (
+    <AuthShell
+      eyebrow="Reset"
+      title="Forgot your key?"
+      lede="Tell us the email on the account. We'll send a one-time link to set a new password."
+      footnote={
+        <p>
+          <Link
+            href="/auth/login"
+            className="text-blueprint underline underline-offset-4 hover:text-ink"
+          >
+            ← Back to sign in
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <FieldRow label="Email" htmlFor="email">
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            className="field w-full"
+            placeholder="you@yourdomain"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </FieldRow>
+
+        {error && (
+          <div
+            role="alert"
+            className="border border-wine/30 bg-wine/8 px-3 py-2 text-[14px] text-wine font-serif"
+          >
+            {error}
           </div>
-        ) : (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="sr-only">Email address</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Email address"
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {loading ? 'Sending…' : 'Send reset link'}
-            </button>
-
-            <div className="text-center text-sm">
-              <Link href="/auth/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-                Back to sign in
-              </Link>
-            </div>
-          </form>
         )}
-      </div>
-    </div>
+
+        <button type="submit" disabled={loading} className="btn-ink w-full">
+          {loading ? 'Sending…' : 'Send reset link'}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

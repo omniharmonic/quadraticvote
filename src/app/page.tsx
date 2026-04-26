@@ -1,226 +1,575 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import Navigation from '@/components/layout/navigation';
+import {
+  GraphPaper,
+  SectionLabel,
+  Sqrt,
+  SchematicCard,
+  InkRule,
+  Stamp,
+  SpecRow,
+  Equation,
+} from '@/components/schematic';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Calendar, Users, Trophy, Sparkles, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
+
+type Event = {
+  id: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  decisionFramework?: { framework_type?: string; config?: any };
+  creditsPerVoter: number;
+  optionMode?: string;
+};
 
 export default function HomePage() {
   const router = useRouter();
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchEvents();
+    fetch('/api/events')
+      .then((r) => r.json())
+      .then((d) => setEvents(d.events ?? []))
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  const fetchEvents = async () => {
-    try {
-      const response = await fetch('/api/events');
-      const data = await response.json();
-      
-      if (response.ok) {
-        setEvents(data.events || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch events:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isEventActive = (event: any) => {
-    const now = new Date();
-    return now >= new Date(event.startTime) && now <= new Date(event.endTime);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+  const live = events.filter((e) => isLive(e));
+  const upcoming = events.filter((e) => new Date(e.startTime) > new Date());
+  const closed = events.filter((e) => new Date(e.endTime) < new Date());
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      {/* Hero Section */}
-      <div className="border-b bg-white/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-12 md:py-20">
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-4">
-              QuadraticVote
-            </h1>
-            <p className="text-xl text-gray-600 mb-8">
-              Democratic decision-making powered by quadratic voting. 
-              Choose winners or allocate resources fairly and efficiently.
-            </p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <Button size="lg" onClick={() => router.push('/events/create')} className="text-lg px-8">
-                <Plus className="mr-2 h-5 w-5" />
-                Create Event
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => router.push('/test')} className="text-lg px-8">
-                API Test Dashboard
-              </Button>
+    <div className="min-h-screen bg-paper text-ink">
+      <Navigation />
+
+      {/* ───────── HERO ───────── */}
+      <section className="relative overflow-hidden border-b border-ink/15">
+        <GraphPaper
+          aria-hidden
+          className="absolute inset-0 opacity-60 pointer-events-none"
+        />
+        {/* Drafting margin */}
+        <div
+          aria-hidden
+          className="absolute left-12 top-0 bottom-0 w-px bg-terracotta/40 hidden md:block"
+        />
+
+        <div className="relative mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-24">
+          <div className="grid grid-cols-12 gap-x-6 gap-y-10 items-end">
+            <div className="col-span-12 lg:col-span-8">
+              <SectionLabel number={1} className="anim-ink">
+                Civic Decisions, Fairly Counted
+              </SectionLabel>
+
+              <h1 className="mt-5 font-display text-[42px] sm:text-[58px] lg:text-[78px] leading-[0.98] tracking-[-0.02em] text-ink anim-ink [animation-delay:80ms] text-balance">
+                Decide together,{' '}
+                <span className="scribble-underline">root and all</span>.
+              </h1>
+
+              <p className="mt-7 max-w-xl font-serif text-[19px] leading-snug text-ink-2 anim-ink [animation-delay:200ms] text-pretty">
+                A drafting table for the things a community needs to weigh.
+                Allocate credits, count by <span className="font-display italic">√</span>, and turn opinion
+                into outcome — without letting a loud minority drown anyone out.
+              </p>
+
+              <div className="mt-9 flex flex-wrap items-center gap-3 anim-ink [animation-delay:340ms]">
+                <Link href="/events/create" className="btn-ink">
+                  Draft an event →
+                </Link>
+                <Link href="#slate" className="btn-paper">
+                  Browse open events
+                </Link>
+                <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3 ml-2">
+                  No card required
+                </span>
+              </div>
+            </div>
+
+            {/* The √ display block */}
+            <div className="col-span-12 lg:col-span-4 anim-ink [animation-delay:140ms]">
+              <SchematicCard accent className="relative p-7 md:p-9">
+                <div className="absolute -top-3 left-6">
+                  <Stamp tone="terracotta" rotate={-3}>
+                    Method · √ credits
+                  </Stamp>
+                </div>
+
+                <div className="flex items-end gap-4">
+                  <Sqrt size="lg" />
+                  <div className="pb-3">
+                    <div className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
+                      One voter
+                    </div>
+                    <div className="font-display text-[26px] leading-tight">
+                      100&nbsp;credits
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="ink-rule mt-2" />
+
+                <div className="space-y-1">
+                  <Equation
+                    lhs={<>√100</>}
+                    rhs={<>10 votes</>}
+                    note="ALL ON ONE OPTION"
+                  />
+                  <Equation
+                    lhs={<>√25 + √25 + √25 + √25</>}
+                    rhs={<>20 votes</>}
+                    note="SPREAD ACROSS FOUR"
+                  />
+                </div>
+
+                <p className="mt-4 font-serif text-[14.5px] text-ink-2 leading-snug">
+                  Spreading your support is{' '}
+                  <span className="text-blueprint font-medium">always</span>{' '}
+                  worth more than piling on. Quadratic voting is just
+                  arithmetic, but it changes the conversation.
+                </p>
+              </SchematicCard>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        {/* Features Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          <Card className="border-blue-500/20 bg-gradient-to-br from-blue-50 to-white">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Trophy className="h-8 w-8 text-blue-600" />
-                <div>
-                  <CardTitle>Binary Selection</CardTitle>
-                  <CardDescription>Choose winners from options</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700">
-                Perfect for competitions, awards, or selecting projects. 
-                Voters choose their favorites and the system determines winners based on quadratic votes.
-              </p>
-            </CardContent>
-          </Card>
+      {/* ───────── HOW IT WORKS — three plates ───────── */}
+      <section className="border-b border-ink/15 bg-paper-2/40">
+        <div className="mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-20">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <SectionLabel number={2}>The flow</SectionLabel>
+              <h2 className="mt-3 font-display text-3xl md:text-4xl text-ink leading-tight">
+                Three steps, no robes required.
+              </h2>
+            </div>
+          </div>
 
-          <Card className="border-purple-500/20 bg-gradient-to-br from-purple-50 to-white">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-8 w-8 text-purple-600" />
-                <div>
-                  <CardTitle>Proportional Distribution</CardTitle>
-                  <CardDescription>Allocate resources fairly</CardDescription>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+            {[
+              {
+                n: 1,
+                title: 'Set the table',
+                body:
+                  'Write the question. Pick a framework — pick a winner, or split a pool. Add the options or invite proposals.',
+                cta: { href: '/events/create', label: 'Draft event' },
+                accent: 'blueprint' as const,
+              },
+              {
+                n: 2,
+                title: 'Pass the pen',
+                body:
+                  'Send the link. Voters get the same credit purse. They allocate however much they care, and the math handles fairness.',
+                cta: null,
+                accent: 'terracotta' as const,
+              },
+              {
+                n: 3,
+                title: 'Read the results',
+                body:
+                  'Live tally if you want it visible. Otherwise the answer drops at the deadline, with a printable record.',
+                cta: { href: '#slate', label: 'See examples' },
+                accent: 'sage' as const,
+              },
+            ].map(({ n, title, body, cta, accent }) => (
+              <SchematicCard key={n} className="relative p-6 md:p-7 group">
+                <div className="flex items-baseline justify-between mb-3">
+                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
+                    Step · {String(n).padStart(2, '0')}
+                  </span>
+                  <span
+                    className={cn(
+                      'font-mono text-[10px] uppercase tracking-widest',
+                      accent === 'blueprint' && 'text-blueprint',
+                      accent === 'terracotta' && 'text-terracotta',
+                      accent === 'sage' && 'text-sage'
+                    )}
+                  >
+                    ◇
+                  </span>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700">
-                Ideal for budgets, grants, or resource allocation. 
-                Resources are distributed proportionally based on the community's preferences.
-              </p>
-            </CardContent>
-          </Card>
+                <h3 className="font-display text-2xl text-ink leading-tight">
+                  {title}
+                </h3>
+                <p className="mt-2.5 font-serif text-[15px] text-ink-2 leading-snug text-pretty">
+                  {body}
+                </p>
+                {cta && (
+                  <Link
+                    href={cta.href}
+                    className="mt-5 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-ink hover:text-terracotta transition-colors"
+                  >
+                    {cta.label} <span aria-hidden>→</span>
+                  </Link>
+                )}
+              </SchematicCard>
+            ))}
+          </div>
         </div>
+      </section>
 
-        {/* Events List */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl font-bold text-gray-900">Active Events</h2>
-            <Button variant="outline" onClick={fetchEvents}>
-              Refresh
-            </Button>
+      {/* ───────── FRAMEWORK SCHEMATICS ───────── */}
+      <section className="border-b border-ink/15">
+        <div className="mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-24">
+          <SectionLabel number={3}>Two ways to decide</SectionLabel>
+          <h2 className="mt-3 font-display text-3xl md:text-4xl text-ink leading-tight max-w-3xl text-balance">
+            Pick a winner. Or split a pool. The schematic tells you which fits.
+          </h2>
+
+          <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* BINARY */}
+            <SchematicCard accent className="p-7 md:p-9 relative">
+              <div className="flex items-baseline justify-between">
+                <SectionLabel number="A">Binary selection</SectionLabel>
+                <span className="font-mono text-[10.5px] uppercase tracking-widest text-blueprint">
+                  Top-N · % · Threshold
+                </span>
+              </div>
+              <h3 className="mt-3 font-display text-3xl text-ink">
+                Choose winners.
+              </h3>
+              <p className="mt-2 font-serif text-[15.5px] text-ink-2 leading-snug">
+                Three finalists. Twelve grant applicants. The shortlist that
+                gets the green light.
+              </p>
+
+              {/* tiny schematic: ranked bars */}
+              <div className="mt-6 space-y-2.5 font-mono text-[11px] uppercase tracking-widest text-ink-3">
+                {[
+                  { label: 'Option A', w: 88, won: true },
+                  { label: 'Option B', w: 76, won: true },
+                  { label: 'Option C', w: 54, won: false },
+                  { label: 'Option D', w: 38, won: false },
+                ].map((r) => (
+                  <div key={r.label} className="flex items-center gap-3">
+                    <span className="w-16 text-ink-2">{r.label}</span>
+                    <div className="relative flex-1 h-3 border border-ink/25 bg-paper">
+                      <div
+                        className={cn(
+                          'h-full',
+                          r.won ? 'bg-blueprint' : 'bg-ink/25'
+                        )}
+                        style={{ width: r.w + '%' }}
+                      />
+                      <div className="absolute inset-y-0 left-[68%] w-px bg-terracotta" />
+                    </div>
+                    <span
+                      className={cn(
+                        'w-12 text-right',
+                        r.won ? 'text-blueprint' : 'text-ink-3'
+                      )}
+                    >
+                      {r.won ? 'IN' : 'OUT'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-end mt-1">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-terracotta">
+                  ↑ cut line
+                </span>
+              </div>
+
+              <hr className="ink-rule" />
+
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                <SpecRow label="Best for" value="Awards · Shortlists" />
+                <SpecRow label="Modes" value="top_n · % · ≥ N" />
+              </div>
+            </SchematicCard>
+
+            {/* PROPORTIONAL */}
+            <SchematicCard accent className="p-7 md:p-9">
+              <div className="flex items-baseline justify-between">
+                <SectionLabel number="B">Proportional distribution</SectionLabel>
+                <span className="font-mono text-[10.5px] uppercase tracking-widest text-terracotta">
+                  Pool · Floor · Gini
+                </span>
+              </div>
+              <h3 className="mt-3 font-display text-3xl text-ink">
+                Split the pie.
+              </h3>
+              <p className="mt-2 font-serif text-[15.5px] text-ink-2 leading-snug">
+                $100k of grants. A retroactive rewards round. Anything where
+                <em> how much</em> matters as much as <em>who</em>.
+              </p>
+
+              {/* tiny schematic: stacked allocation bar */}
+              <div className="mt-6">
+                <div className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 mb-2 flex justify-between">
+                  <span>Grant pool</span>
+                  <span>$100,000.00</span>
+                </div>
+                <div className="flex h-7 border border-ink/25 overflow-hidden">
+                  <div
+                    className="bg-terracotta"
+                    style={{ width: '41%' }}
+                    title="DeFi · 41%"
+                  />
+                  <div
+                    className="bg-blueprint"
+                    style={{ width: '30%' }}
+                    title="Bridge · 30%"
+                  />
+                  <div
+                    className="bg-sage"
+                    style={{ width: '20%' }}
+                    title="DAO Tools · 20%"
+                  />
+                  <div
+                    className="bg-gold"
+                    style={{ width: '9%' }}
+                    title="Other · 9%"
+                  />
+                </div>
+                <div className="grid grid-cols-4 mt-2 gap-1 font-mono text-[10px] uppercase tracking-widest text-ink-3">
+                  <span><span className="inline-block w-2 h-2 bg-terracotta mr-1.5 align-middle" />41%</span>
+                  <span><span className="inline-block w-2 h-2 bg-blueprint mr-1.5 align-middle" />30%</span>
+                  <span><span className="inline-block w-2 h-2 bg-sage mr-1.5 align-middle" />20%</span>
+                  <span><span className="inline-block w-2 h-2 bg-gold mr-1.5 align-middle" />9%</span>
+                </div>
+              </div>
+
+              <hr className="ink-rule" />
+
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                <SpecRow label="Best for" value="Funding · Allocation" />
+                <SpecRow label="Reports" value="Gini · Floor" />
+              </div>
+            </SchematicCard>
+          </div>
+        </div>
+      </section>
+
+      {/* ───────── EVENT SLATE ───────── */}
+      <section id="slate" className="border-b border-ink/15">
+        <div className="mx-auto max-w-7xl px-5 md:px-8 py-16 md:py-24">
+          <div className="flex items-end justify-between mb-10 gap-6 flex-wrap">
+            <div>
+              <SectionLabel number={4}>Open slate</SectionLabel>
+              <h2 className="mt-3 font-display text-3xl md:text-4xl text-ink leading-tight">
+                {live.length > 0
+                  ? 'Open for voting now.'
+                  : 'No events open this minute.'}
+              </h2>
+              <p className="mt-2 font-serif text-ink-2">
+                {events.length} on file ·{' '}
+                <span className="text-sage">{live.length} live</span> ·{' '}
+                <span className="text-terracotta">{upcoming.length} upcoming</span> ·{' '}
+                <span className="text-ink-3">{closed.length} closed</span>
+              </p>
+            </div>
+
+            <Link href="/events/create" className="btn-blueprint">
+              + Draft an event
+            </Link>
           </div>
 
           {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-              <p className="text-gray-600">Loading events...</p>
-            </div>
+            <SkeletonGrid />
           ) : events.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Calendar className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No events yet</h3>
-                <p className="text-gray-600 mb-6">
-                  Be the first to create a quadratic voting event!
-                </p>
-                <Button onClick={() => router.push('/events/create')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Event
-                </Button>
-              </CardContent>
-            </Card>
+            <SchematicCard className="p-12 text-center">
+              <Sqrt size="md" className="mx-auto opacity-30" />
+              <p className="mt-4 font-display text-2xl text-ink">
+                The slate is blank.
+              </p>
+              <p className="mt-2 font-serif text-ink-2">
+                Be the first to draft something for the community.
+              </p>
+              <Link
+                href="/events/create"
+                className="btn-ink mt-6 inline-flex"
+              >
+                Start drafting
+              </Link>
+            </SchematicCard>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((event) => {
-                const framework = event.decisionFramework;
-                const isBinary = framework?.framework_type === 'binary_selection';
-                const active = isEventActive(event);
-
-                return (
-                  <Card key={event.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push(`/events/${event.id}`)}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between mb-2">
-                        <Badge variant={isBinary ? 'default' : 'secondary'}>
-                          {isBinary ? 'Binary' : 'Proportional'}
-                        </Badge>
-                        {active && (
-                          <Badge className="bg-green-500">Live</Badge>
-                        )}
-                      </div>
-                      <CardTitle className="line-clamp-2">{event.title}</CardTitle>
-                      {event.description && (
-                        <CardDescription className="line-clamp-2">{event.description}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>Ends {formatDate(event.endTime)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <span>{event.creditsPerVoter} credits per voter</span>
-                        </div>
-                      </div>
-                      <Button className="w-full mt-4" variant="outline">
-                        View Event <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {events.map((e, i) => (
+                <EventCard key={e.id} event={e} index={i} />
+              ))}
             </div>
           )}
         </div>
+      </section>
 
-        {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">How It Works</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-600">
-              <ol className="list-decimal list-inside space-y-2">
-                <li>Create an event with your options</li>
-                <li>Share the link with voters</li>
-                <li>Voters allocate credits using quadratic voting</li>
-                <li>View results in real-time or after voting closes</li>
-              </ol>
-            </CardContent>
-          </Card>
+      {/* ───────── COLOPHON ───────── */}
+      <footer className="bg-paper-2/50">
+        <div className="mx-auto max-w-7xl px-5 md:px-8 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <span className="font-display text-[22px] leading-none text-ink tracking-tight">
+                quadratic
+                <span className="mx-1 text-terracotta">·</span>vote
+              </span>
+              <p className="mt-3 font-serif text-[15px] text-ink-2 leading-snug max-w-xs">
+                A small, opinionated tool for honest community decisions.
+                Built like a drafting table — measured, lit, and warm.
+              </p>
+            </div>
+            <div>
+              <SectionLabel>Method</SectionLabel>
+              <p className="mt-2 font-serif text-[14.5px] text-ink-2 leading-snug">
+                Each voter gets the same credit purse. Votes count as the
+                square root of credits spent. Concentration costs you.
+              </p>
+            </div>
+            <div>
+              <SectionLabel>Contact</SectionLabel>
+              <ul className="mt-2 font-serif text-[14.5px] text-ink-2 space-y-1">
+                <li>
+                  <Link href="/auth/signup" className="hover:text-ink underline-offset-4 hover:underline">
+                    Open an account →
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/omniharmonic/quadraticvote"
+                    className="hover:text-ink underline-offset-4 hover:underline"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Source on GitHub →
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <InkRule />
+          <div className="flex items-center justify-between font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+            <span>QV · {new Date().getFullYear()}</span>
+            <span>Edition · 0.1 · Drafting</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Quadratic Voting</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-600">
-              Quadratic voting uses the formula: votes = √credits. This means the more credits you allocate to an option, the less impact each additional credit has, encouraging voters to spread their support.
-            </CardContent>
-          </Card>
+/* ─────────── helpers ─────────── */
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Use Cases</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-gray-600 space-y-1">
-              • Community budgeting<br />
-              • Grant allocation<br />
-              • Feature prioritization<br />
-              • Award selection<br />
-              • DAO governance
-            </CardContent>
-          </Card>
+function isLive(e: Event) {
+  const now = new Date();
+  return now >= new Date(e.startTime) && now <= new Date(e.endTime);
+}
+
+function fmtShort(d: string) {
+  return new Date(d).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function daysUntil(end: string) {
+  const ms = new Date(end).getTime() - Date.now();
+  if (ms < 0) return 'closed';
+  const d = Math.floor(ms / 86_400_000);
+  if (d === 0) return 'today';
+  if (d === 1) return '1 day';
+  return `${d} days`;
+}
+
+function EventCard({ event, index }: { event: Event; index: number }) {
+  const router = useRouter();
+  const isBinary = event.decisionFramework?.framework_type === 'binary_selection';
+  const live = isLive(event);
+  const upcoming = new Date(event.startTime) > new Date();
+  const closed = new Date(event.endTime) < new Date();
+
+  const status = live ? 'live' : upcoming ? 'upcoming' : 'closed';
+  const statusTone =
+    live ? 'sage' : upcoming ? 'terracotta' : 'secondary';
+
+  return (
+    <SchematicCard
+      onClick={() => router.push(`/events/${event.id}`)}
+      className={cn(
+        'group cursor-pointer p-6 transition-all anim-draft',
+        'hover:-translate-y-0.5 hover:shadow-[0_18px_30px_-18px_rgb(var(--ink)/0.35)]'
+      )}
+      style={{ animationDelay: `${index * 60}ms` }}
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <Badge variant={isBinary ? 'blueprint' : 'terracotta'}>
+          {isBinary ? 'Binary' : 'Proportional'}
+        </Badge>
+        <Badge variant={statusTone as any}>
+          <span
+            className={cn(
+              'mr-1 inline-block h-1.5 w-1.5 rounded-full',
+              live && 'bg-sage animate-pulse',
+              upcoming && 'bg-terracotta',
+              closed && 'bg-ink-3'
+            )}
+          />
+          {status}
+        </Badge>
+      </div>
+
+      <h3 className="font-display text-[22px] leading-tight text-ink line-clamp-2 group-hover:text-blueprint transition-colors">
+        {event.title}
+      </h3>
+
+      {event.description && (
+        <p className="mt-2 font-serif text-[14.5px] leading-snug text-ink-2 line-clamp-2 text-pretty">
+          {event.description}
+        </p>
+      )}
+
+      <hr className="ink-rule" />
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 font-mono text-[10.5px] uppercase tracking-widest">
+        <div className="flex flex-col">
+          <span className="text-ink-3">Credits</span>
+          <span className="font-display normal-case tracking-normal text-[15px] text-ink">
+            {event.creditsPerVoter}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-ink-3">
+            {closed ? 'Closed' : 'Closes in'}
+          </span>
+          <span className="font-display normal-case tracking-normal text-[15px] text-ink">
+            {closed ? fmtShort(event.endTime) : daysUntil(event.endTime)}
+          </span>
         </div>
       </div>
+
+      <div className="mt-5 flex items-center justify-between font-mono text-[10.5px] uppercase tracking-widest text-ink-3 group-hover:text-terracotta transition-colors">
+        <span>Open the file</span>
+        <span aria-hidden>→</span>
+      </div>
+    </SchematicCard>
+  );
+}
+
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          className="schematic schematic-tick p-6 animate-pulse"
+          style={{ opacity: 0.6 }}
+        >
+          <div className="h-3 w-16 bg-ink/10 mb-3" />
+          <div className="h-6 w-2/3 bg-ink/15 mb-2" />
+          <div className="h-3 w-full bg-ink/10 mb-1.5" />
+          <div className="h-3 w-3/4 bg-ink/10" />
+          <div className="ink-rule" />
+          <div className="flex justify-between">
+            <div className="h-4 w-16 bg-ink/10" />
+            <div className="h-4 w-20 bg-ink/10" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

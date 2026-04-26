@@ -238,7 +238,7 @@ export default function CreateEventPage() {
     return (
       <>
         <Navigation />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
+        <div className="min-h-screen bg-paper text-ink">
           <div className="max-w-4xl mx-auto text-center pt-20">
             <div className="animate-pulse">Loading...</div>
           </div>
@@ -251,17 +251,73 @@ export default function CreateEventPage() {
     return null; // Will redirect in useEffect
   }
 
+  const stepLabels = [
+    'Basics',
+    'Framework',
+    'Configuration',
+    'Options',
+    'Voters',
+    'Review',
+  ];
+
   return (
     <>
       <Navigation />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Create New Event</h1>
-          <p className="text-gray-600">Set up your quadratic voting event in 4 simple steps</p>
-          <Progress value={progress} className="mt-4" />
-        </div>
+      <div className="min-h-screen bg-paper text-ink">
+        {/* Hero strip with graph paper underlay */}
+        <section className="relative overflow-hidden border-b border-ink/15">
+          <div aria-hidden className="absolute inset-0 bg-graph opacity-50 pointer-events-none" />
+          <div aria-hidden className="absolute left-12 top-0 bottom-0 w-px bg-terracotta/40 hidden md:block" />
+          <div className="relative mx-auto max-w-5xl px-5 md:px-8 py-12">
+            <div className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
+              <span className="text-blueprint">§</span> {String(currentStep).padStart(2, '0')}{' '}
+              <span className="text-ink-3/60">·</span> {stepLabels[currentStep - 1]}
+            </div>
+            <h1 className="mt-3 font-display text-4xl md:text-5xl text-ink leading-tight tracking-[-0.018em]">
+              Draft a new event.
+            </h1>
+            <p className="mt-3 max-w-xl font-serif text-[16.5px] text-ink-2 leading-snug">
+              Six measured steps. Every choice maps to one box on the schematic.
+            </p>
+
+            {/* Step bar */}
+            <div className="mt-7 flex items-center gap-2 max-w-3xl">
+              {stepLabels.map((label, i) => {
+                const n = i + 1;
+                const done = n < currentStep;
+                const active = n === currentStep;
+                return (
+                  <div key={label} className="flex-1">
+                    <div
+                      className={
+                        'h-1.5 ' +
+                        (done
+                          ? 'bg-blueprint'
+                          : active
+                          ? 'bg-blueprint/55'
+                          : 'bg-ink/15')
+                      }
+                    />
+                    <div
+                      className={
+                        'mt-1.5 font-mono text-[10.5px] uppercase tracking-widest ' +
+                        (active
+                          ? 'text-ink'
+                          : done
+                          ? 'text-blueprint'
+                          : 'text-ink-3')
+                      }
+                    >
+                      {String(n).padStart(2, '0')} · {label}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <div className="max-w-4xl mx-auto px-5 md:px-8 py-10">
 
         {/* Step 1: Basic Information */}
         {currentStep === 1 && (

@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
-import { Calendar, Users, Trophy, Sparkles, ArrowRight } from 'lucide-react';
-import type { Event } from '@/lib/types';
+import Link from 'next/link';
 import Navigation from '@/components/layout/navigation';
+import {
+  GraphPaper,
+  SectionLabel,
+  SchematicCard,
+  Stamp,
+  SpecRow,
+  Sqrt,
+  NumberMarker,
+  InkRule,
+} from '@/components/schematic';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils/cn';
+
+export const dynamic = 'force-dynamic';
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -18,56 +26,27 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchEvent();
+    let cancelled = false;
+    fetch(`/api/events/${params.id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        setEvent(d.event ?? null);
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, [params.id]);
-
-  const fetchEvent = async () => {
-    try {
-      const response = await fetch(`/api/events/${params.id}`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        setEvent(data.event);
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to load event',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load event',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isEventActive = () => {
-    if (!event) return false;
-    const now = new Date();
-    return now >= new Date(event.startTime) && now <= new Date(event.endTime);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-gray-600">Loading event...</p>
+      <div className="min-h-screen bg-paper">
+        <Navigation />
+        <div className="mx-auto max-w-5xl px-5 md:px-8 py-20">
+          <div className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
+            Loading file…
+          </div>
         </div>
       </div>
     );
@@ -75,204 +54,320 @@ export default function EventDetailPage() {
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Event Not Found</CardTitle>
-            <CardDescription>The event you're looking for doesn't exist.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => router.push('/')}>Go Home</Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-paper">
+        <Navigation />
+        <div className="mx-auto max-w-md px-5 md:px-8 py-20 text-center">
+          <Sqrt size="md" className="opacity-30" />
+          <h1 className="mt-4 font-display text-3xl text-ink">File not found.</h1>
+          <p className="mt-2 font-serif text-ink-2">
+            We couldn&apos;t locate that event in the cabinet.
+          </p>
+          <button
+            className="btn-ink mt-6"
+            onClick={() => router.push('/')}
+          >
+            Back to slate
+          </button>
+        </div>
       </div>
     );
   }
 
-  const framework = event.decisionFramework;
+  const framework = event.decisionFramework ?? {};
   const isBinary = framework.framework_type === 'binary_selection';
+  const config = framework.config ?? {};
+  const now = new Date();
+  const start = new Date(event.startTime);
+  const end = new Date(event.endTime);
+  const isLive = now >= start && now <= end;
+  const upcoming = now < start;
+  const closed = now > end;
+  const status = isLive ? 'live' : upcoming ? 'upcoming' : 'closed';
+  const acceptsProposals =
+    event.optionMode === 'community_proposals' || event.optionMode === 'hybrid';
 
   return (
-    <>
-      <Navigation eventId={params.id as string} eventTitle={event.title} showAdminNav={true} />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            {isBinary ? (
-              <Trophy className="h-6 w-6 text-blue-600" />
-            ) : (
-              <Sparkles className="h-6 w-6 text-purple-600" />
-            )}
-            <Badge variant="secondary">
+    <div className="min-h-screen bg-paper text-ink">
+      <Navigation eventId={params.id as string} eventTitle={event.title} />
+
+      {/* HEADER */}
+      <section className="relative overflow-hidden border-b border-ink/15">
+        <GraphPaper aria-hidden className="absolute inset-0 opacity-50" />
+        <div
+          aria-hidden
+          className="absolute left-12 top-0 bottom-0 w-px bg-terracotta/40 hidden md:block"
+        />
+
+        <div className="relative mx-auto max-w-6xl px-5 md:px-8 py-12 md:py-16">
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            <Badge variant={isBinary ? 'blueprint' : 'terracotta'}>
               {isBinary ? 'Binary Selection' : 'Proportional Distribution'}
             </Badge>
-            {isEventActive() && (
-              <Badge className="bg-green-500">Active</Badge>
+            <Badge
+              variant={
+                isLive ? 'sage' : upcoming ? 'terracotta' : 'secondary'
+              }
+            >
+              <span
+                className={cn(
+                  'mr-1 inline-block h-1.5 w-1.5 rounded-full',
+                  isLive && 'bg-sage animate-pulse',
+                  upcoming && 'bg-terracotta',
+                  closed && 'bg-ink-3'
+                )}
+              />
+              {status}
+            </Badge>
+            {acceptsProposals && (
+              <Badge variant="outline">Community proposals</Badge>
             )}
           </div>
-          
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">{event.title}</h1>
+
+          <h1 className="font-display text-[36px] sm:text-[44px] lg:text-[56px] leading-[1.02] tracking-[-0.02em] text-ink anim-ink text-balance">
+            {event.title}
+          </h1>
+
           {event.description && (
-            <p className="text-lg text-gray-600 mb-4">{event.description}</p>
+            <p className="mt-5 max-w-3xl font-serif text-[18px] text-ink-2 leading-snug anim-ink [animation-delay:120ms] text-pretty">
+              {event.description}
+            </p>
           )}
 
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span>{formatDate(event.startTime)} - {formatDate(event.endTime)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span>{event.creditsPerVoter} credits per voter</span>
-            </div>
+          <div className="mt-7 flex flex-wrap items-center gap-x-8 gap-y-3 anim-ink [animation-delay:240ms]">
+            <SpecBlock label="Window">
+              <FmtDate d={start} /> → <FmtDate d={end} />
+            </SpecBlock>
+            <SpecBlock label="Credit purse">
+              {event.creditsPerVoter} per voter
+            </SpecBlock>
+            <SpecBlock label="Visibility">{event.visibility}</SpecBlock>
+            {!isBinary && config.total_pool_amount && (
+              <SpecBlock label="Pool">
+                {config.resource_symbol} {Number(config.total_pool_amount).toLocaleString()}{' '}
+                {config.resource_name}
+              </SpecBlock>
+            )}
           </div>
         </div>
+      </section>
 
-        {/* Framework Info */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>How This Works</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* CONTENT GRID */}
+      <section className="mx-auto max-w-6xl px-5 md:px-8 py-12 md:py-16 grid grid-cols-12 gap-6">
+        {/* Left: how it works + options */}
+        <div className="col-span-12 lg:col-span-8 space-y-6">
+          <SchematicCard accent className="p-7 md:p-9">
+            <SectionLabel number={1}>How this works</SectionLabel>
             {isBinary ? (
               <>
-                <p className="text-gray-700">
-                  This is a <strong>competitive selection</strong> event. Voters allocate credits 
-                  to their preferred options using quadratic voting. Winners are determined by:
+                <h2 className="mt-3 font-display text-3xl text-ink">
+                  This event picks winners.
+                </h2>
+                <p className="mt-2 font-serif text-[16px] text-ink-2 leading-snug max-w-2xl text-pretty">
+                  Voters allocate their credits across the options. Each
+                  vote counts as <span className="font-display italic">√credits</span>.
+                  When the deadline hits, the schematic below decides who&apos;s in.
                 </p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="font-medium text-blue-900">
-                    {framework.config.threshold_mode === 'top_n' && 
-                      `Top ${framework.config.top_n_count} options will be selected`}
-                    {framework.config.threshold_mode === 'percentage' && 
-                      'Options above a percentage threshold'}
-                    {framework.config.threshold_mode === 'absolute_votes' && 
-                      'Options above an absolute vote threshold'}
-                    {framework.config.threshold_mode === 'above_average' && 
-                      'Options above the average votes'}
-                  </p>
+
+                <div className="mt-5 inline-flex items-center gap-3 px-4 py-3 border border-blueprint/30 bg-blueprint/8 rounded-[3px]">
+                  <span className="font-mono text-[10.5px] uppercase tracking-widest text-blueprint">
+                    Cut rule
+                  </span>
+                  <span className="font-display text-ink text-lg">
+                    {config.threshold_mode === 'top_n' &&
+                      `Top ${config.top_n_count} options selected`}
+                    {config.threshold_mode === 'percentage' &&
+                      `≥ ${config.percentage_threshold}% of leader`}
+                    {config.threshold_mode === 'absolute_votes' &&
+                      `≥ ${config.absolute_vote_threshold} votes`}
+                    {config.threshold_mode === 'above_average' &&
+                      'Above the average vote count'}
+                  </span>
                 </div>
               </>
             ) : (
               <>
-                <p className="text-gray-700">
-                  This is a <strong>collaborative allocation</strong> event. Voters allocate credits 
-                  to options, and resources are distributed proportionally based on the total votes received.
+                <h2 className="mt-3 font-display text-3xl text-ink">
+                  This event splits a pool.
+                </h2>
+                <p className="mt-2 font-serif text-[16px] text-ink-2 leading-snug max-w-2xl text-pretty">
+                  Voters allocate credits. The pool is distributed in proportion to
+                  the votes each option receives. A small floor can be set to keep
+                  any participating option from going home empty.
                 </p>
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-2">
-                  <p className="font-medium text-purple-900">
-                    Total Pool: {framework.config.resource_symbol}{framework.config.total_pool_amount.toLocaleString()} {framework.config.resource_name}
-                  </p>
-                  <p className="text-sm text-purple-700">
-                    Each option will receive a proportional share based on votes received
-                  </p>
+
+                <div className="mt-5 inline-flex flex-col items-start gap-1 px-4 py-3 border border-terracotta/30 bg-terracotta/8 rounded-[3px]">
+                  <span className="font-mono text-[10.5px] uppercase tracking-widest text-terracotta">
+                    Pool
+                  </span>
+                  <span className="font-display text-ink text-2xl leading-none">
+                    {config.resource_symbol}
+                    {Number(config.total_pool_amount).toLocaleString()}{' '}
+                    <span className="text-base text-ink-3">
+                      {config.resource_name}
+                    </span>
+                  </span>
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </SchematicCard>
 
-        {/* Options */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Options ({event.options?.length || 0})</CardTitle>
-            <CardDescription>
-              {isBinary ? 'Choose your preferred options' : 'Allocate your credits across these options'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {event.options?.map((option: any, index: number) => (
-                <div key={option.id} className="p-4 border rounded-lg">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{option.title}</h4>
-                      {option.description && (
-                        <p className="text-sm text-gray-600 mt-1">{option.description}</p>
+          {/* Options */}
+          <SchematicCard className="p-7 md:p-9">
+            <div className="flex items-baseline justify-between">
+              <SectionLabel number={2}>Options on the slate</SectionLabel>
+              <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+                {event.options?.length ?? 0} on file
+              </span>
+            </div>
+
+            {event.options?.length === 0 ? (
+              <div className="mt-6 border border-dashed border-ink/30 px-6 py-10 text-center">
+                <p className="font-display text-2xl text-ink">No options yet.</p>
+                <p className="mt-2 font-serif text-ink-2">
+                  {acceptsProposals
+                    ? 'The community gets to write this slate. Submit the first proposal.'
+                    : 'The organizer hasn\'t added any options yet.'}
+                </p>
+              </div>
+            ) : (
+              <ul className="mt-5 divide-y divide-ink/12">
+                {event.options?.map((opt: any, i: number) => (
+                  <li
+                    key={opt.id}
+                    className="flex gap-4 py-4 first:pt-0 last:pb-0"
+                  >
+                    <NumberMarker n={i + 1} />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display text-[18px] text-ink leading-snug">
+                        {opt.title}
+                      </h3>
+                      {opt.description && (
+                        <p className="mt-1 font-serif text-[14.5px] text-ink-2 leading-snug">
+                          {opt.description}
+                        </p>
+                      )}
+                      {opt.source === 'community' && (
+                        <span className="mt-2 inline-block font-mono text-[10px] uppercase tracking-widest text-terracotta">
+                          From the community
+                        </span>
                       )}
                     </div>
-                    <Badge variant="outline">#{index + 1}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-
-        {/* Participation Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Voting */}
-          <Card className="border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="text-blue-900">🗳️ Vote on Options</CardTitle>
-              <CardDescription className="text-blue-700">
-                Use quadratic voting to express your preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-sm text-blue-800 space-y-2">
-                <p><strong>1.</strong> Get your unique invite code from the event organizer</p>
-                <p><strong>2.</strong> Click the button below and enter your code</p>
-                <p><strong>3.</strong> Allocate your {event.creditsPerVoter} credits across options</p>
-                <p><strong>4.</strong> Submit your vote</p>
-              </div>
-              <Button
-                size="lg"
-                onClick={() => router.push(`/events/${event.id}/vote`)}
-                className="w-full"
-              >
-                Start Voting <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Proposal Submission (if enabled) */}
-          {(event.optionMode === 'community_proposals' || event.optionMode === 'hybrid') && (
-            <Card className="border-green-200 bg-green-50">
-              <CardHeader>
-                <CardTitle className="text-green-900">💡 Submit a Proposal</CardTitle>
-                <CardDescription className="text-green-700">
-                  {event.optionMode === 'hybrid'
-                    ? 'Add your own proposal to the existing options'
-                    : 'Submit your idea for community consideration'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm text-green-800 space-y-2">
-                  <p><strong>1.</strong> Describe your proposal clearly</p>
-                  <p><strong>2.</strong> Provide supporting details</p>
-                  <p><strong>3.</strong> Submit for review and approval</p>
-                  <p><strong>4.</strong> Once approved, it becomes a voting option</p>
-                </div>
-                <Button
-                  size="lg"
-                  onClick={() => router.push(`/events/${event.id}/propose`)}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                >
-                  Submit Proposal <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SchematicCard>
         </div>
 
-        {/* Additional Actions */}
-        <div className="flex gap-4">
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => router.push(`/events/${event.id}/results`)}
-            className="flex-1"
+        {/* Right: actions rail */}
+        <aside className="col-span-12 lg:col-span-4 space-y-6">
+          {/* Vote CTA */}
+          <SchematicCard
+            accent
+            className={cn(
+              'p-6 transition-all',
+              isLive && 'hover:-translate-y-0.5'
+            )}
           >
-            View Results
-          </Button>
-        </div>
-        </div>
-      </div>
-    </>
+            <div className="flex items-baseline justify-between">
+              <SectionLabel number="A">Cast a vote</SectionLabel>
+              {isLive && <Stamp tone="sage" rotate={-2}>Open</Stamp>}
+              {upcoming && <Stamp tone="terracotta">Soon</Stamp>}
+              {closed && <Stamp tone="ink">Closed</Stamp>}
+            </div>
+            <h3 className="mt-3 font-display text-2xl text-ink leading-tight">
+              {event.creditsPerVoter} credits.
+              <br />
+              How will you spend them?
+            </h3>
+            <p className="mt-2 font-serif text-[14.5px] text-ink-2 leading-snug">
+              Allocate across the options. Concentration costs you — that&apos;s
+              the point.
+            </p>
+            <Link
+              href={`/events/${event.id}/vote`}
+              className={cn(
+                'mt-5 w-full',
+                isLive ? 'btn-ink' : 'btn-paper opacity-60 cursor-not-allowed'
+              )}
+              aria-disabled={!isLive}
+              tabIndex={isLive ? undefined : -1}
+            >
+              {isLive ? 'Open the ballot →' : closed ? 'Voting closed' : 'Not yet open'}
+            </Link>
+          </SchematicCard>
+
+          {/* Proposal CTA */}
+          {acceptsProposals && (
+            <SchematicCard className="p-6">
+              <div className="flex items-baseline justify-between">
+                <SectionLabel number="B">Submit a proposal</SectionLabel>
+                <span className="font-mono text-[10.5px] uppercase tracking-widest text-terracotta">
+                  Open
+                </span>
+              </div>
+              <h3 className="mt-3 font-display text-2xl text-ink leading-tight">
+                Add your own to the slate.
+              </h3>
+              <p className="mt-2 font-serif text-[14.5px] text-ink-2 leading-snug">
+                The organizer reviews proposals. Approved ones become
+                voting options.
+              </p>
+              <Link
+                href={`/events/${event.id}/propose`}
+                className="btn-terra mt-5 w-full"
+              >
+                Send it in →
+              </Link>
+            </SchematicCard>
+          )}
+
+          {/* Results */}
+          <SchematicCard className="p-6">
+            <SectionLabel>Read the room</SectionLabel>
+            <p className="mt-3 font-serif text-[14.5px] text-ink-2 leading-snug">
+              {event.showResultsDuringVoting
+                ? 'Live tally is visible to anyone with the link.'
+                : 'Final tally posts when voting closes.'}
+            </p>
+            <Link
+              href={`/events/${event.id}/results`}
+              className="btn-paper mt-4 w-full"
+            >
+              View tally
+            </Link>
+          </SchematicCard>
+        </aside>
+      </section>
+    </div>
   );
 }
 
+function SpecBlock({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+        {label}
+      </span>
+      <span className="font-display text-[16px] text-ink leading-tight">
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function FmtDate({ d }: { d: Date }) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(d);
+  return <>{fmt}</>;
+}

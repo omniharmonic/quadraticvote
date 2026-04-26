@@ -1,714 +1,418 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/hooks/use-toast';
-import {
-  Trophy, TrendingUp, Users, Clock, CheckCircle, XCircle, Download, ArrowLeft,
-  Network, BarChart3, PieChart, Activity, RefreshCw, Zap, Target, Eye
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import Navigation from '@/components/layout/navigation';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart as RechartsePieChart, Cell, Pie, LineChart, Line, Area, AreaChart
-} from 'recharts';
+  GraphPaper,
+  SectionLabel,
+  SchematicCard,
+  Stamp,
+  Sqrt,
+  InkRule,
+  NumberMarker,
+  SpecRow,
+} from '@/components/schematic';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils/cn';
 
-// Network Graph Component
-function NetworkGraph({ data, width = 700, height = 500 }: { data: any, width?: number, height?: number }) {
-  const [selectedNode, setSelectedNode] = useState<any>(null);
+export const dynamic = 'force-dynamic';
 
-  if (!data || !data.nodes || !data.edges) {
-    return (
-      <div className="flex items-center justify-center h-96 bg-gray-50 rounded-lg">
-        <p className="text-gray-500">No network data available</p>
-      </div>
-    );
-  }
+type Event = any;
+type Results = any;
+type Analytics = any;
 
-  const handleNodeClick = (node: any) => {
-    setSelectedNode(node);
-  };
-
-  return (
-    <div className="relative w-full">
-      <svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className="border rounded-lg bg-white w-full h-auto"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {/* Render edges first */}
-        {data.edges.map((edge: any) => {
-          const sourceNode = data.nodes.find((n: any) => n.id === edge.source);
-          const targetNode = data.nodes.find((n: any) => n.id === edge.target);
-
-          if (!sourceNode || !targetNode) return null;
-
-          const strokeWidth = Math.max(1, Math.log(edge.weight + 1) * 2);
-          const opacity = Math.min(1, edge.weight / 100);
-
-          return (
-            <line
-              key={edge.id}
-              x1={sourceNode.x}
-              y1={sourceNode.y}
-              x2={targetNode.x}
-              y2={targetNode.y}
-              stroke="#3B82F6"
-              strokeWidth={strokeWidth}
-              opacity={opacity}
-              className="hover:stroke-blue-600 transition-colors"
-            >
-              <title>{edge.label}</title>
-            </line>
-          );
-        })}
-
-        {/* Render nodes */}
-        {data.nodes.map((node: any) => {
-          const isVoter = node.type === 'voter';
-          const radius = isVoter ? 8 : 12;
-          const fill = isVoter ? '#10B981' : '#F59E0B';
-          const scale = selectedNode?.id === node.id ? 1.2 : 1;
-
-          return (
-            <g key={node.id} transform={`translate(${node.x}, ${node.y}) scale(${scale})`}>
-              <circle
-                r={radius}
-                fill={fill}
-                stroke="#FFF"
-                strokeWidth={2}
-                className="cursor-pointer hover:opacity-80 transition-all"
-                onClick={() => handleNodeClick(node)}
-              >
-                <title>
-                  {node.label}
-                  {isVoter ? ` (${node.credits} credits)` : ` (${node.totalCredits} total credits)`}
-                </title>
-              </circle>
-              <text
-                y={radius + 15}
-                textAnchor="middle"
-                className="text-xs fill-gray-600 pointer-events-none"
-              >
-                {node.label.length > 15 ? node.label.substring(0, 15) + '...' : node.label}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-
-      {selectedNode && (
-        <div className="absolute top-4 right-4 bg-white p-4 rounded-lg shadow-lg border max-w-xs">
-          <h4 className="font-bold text-sm">{selectedNode.label}</h4>
-          <p className="text-xs text-gray-600 mt-1">
-            {selectedNode.type === 'voter'
-              ? `Credits used: ${selectedNode.credits}`
-              : `Total credits: ${selectedNode.totalCredits}, Votes: ${selectedNode.voteCount}`
-            }
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-2 text-xs"
-            onClick={() => setSelectedNode(null)}
-          >
-            Close
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Cluster Analysis Component
-function ClusterAnalysis({ data }: { data: any }) {
-  if (!data || !data.clusters) {
-    return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
-        <p className="text-gray-500">No cluster data available</p>
-      </div>
-    );
-  }
-
-  const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="text-center p-3 bg-blue-50 rounded-lg">
-          <div className="text-2xl font-bold text-blue-600">{data.summary.totalClusters}</div>
-          <div className="text-sm text-gray-600">Total Clusters</div>
-        </div>
-        <div className="text-center p-3 bg-green-50 rounded-lg">
-          <div className="text-2xl font-bold text-green-600">{data.summary.largestCluster}</div>
-          <div className="text-sm text-gray-600">Largest Cluster</div>
-        </div>
-        <div className="text-center p-3 bg-purple-50 rounded-lg">
-          <div className="text-2xl font-bold text-purple-600">{(data.summary.diversity * 100).toFixed(0)}%</div>
-          <div className="text-sm text-gray-600">Diversity Score</div>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {data.clusters.slice(0, 6).map((cluster: any, index: number) => (
-          <div key={cluster.id} className="p-4 border rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: colors[index % colors.length] }}
-                />
-                <h4 className="font-medium">Cluster {index + 1}</h4>
-                <Badge variant="outline">{cluster.voterCount} voters</Badge>
-              </div>
-              <span className="text-sm text-gray-600">{cluster.percentage.toFixed(1)}%</span>
-            </div>
-            <div className="text-sm text-gray-600 mb-2">
-              Average credits: {cluster.avgCredits.toFixed(1)}
-            </div>
-            <Progress value={cluster.percentage} className="h-2" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Timeline Visualization Component
-function TimelineVisualization({ data }: { data: any }) {
-  if (!data || data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
-        <p className="text-gray-500">No timeline data available</p>
-      </div>
-    );
-  }
-
-  const formattedData = data.map((item: any) => {
-    const date = new Date(item.timestamp);
-    return {
-      ...item,
-      timestamp: date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
-      hour: date.getHours(),
-      dayOfWeek: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      voteCount: Number(item.voteCount),
-      totalCredits: Number(item.totalCredits)
-    };
-  }).sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <AreaChart data={formattedData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis
-          dataKey="timestamp"
-          tick={{ fontSize: 12 }}
-          angle={-45}
-          textAnchor="end"
-          height={60}
-        />
-        <YAxis
-          yAxisId="votes"
-          orientation="left"
-          tick={{ fontSize: 12 }}
-        />
-        <YAxis
-          yAxisId="credits"
-          orientation="right"
-          tick={{ fontSize: 12 }}
-        />
-        <Tooltip
-          content={({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-              return (
-                <div className="bg-white p-3 border rounded shadow-lg">
-                  <p className="font-medium">{label}</p>
-                  {payload.map((item: any, index: number) => (
-                    <p key={index} style={{ color: item.color }}>
-                      {item.name}: {item.value}
-                    </p>
-                  ))}
-                </div>
-              );
-            }
-            return null;
-          }}
-        />
-        <Area
-          type="monotone"
-          dataKey="voteCount"
-          stroke="#3B82F6"
-          fill="#3B82F6"
-          fillOpacity={0.3}
-          name="Votes"
-          yAxisId="votes"
-        />
-        <Area
-          type="monotone"
-          dataKey="totalCredits"
-          stroke="#10B981"
-          fill="#10B981"
-          fillOpacity={0.3}
-          name="Credits Used"
-          yAxisId="credits"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
-export default function AdvancedAnalyticsPage() {
+export default function ResultsPage() {
   const params = useParams();
-  const router = useRouter();
-  const [event, setEvent] = useState<any>(null);
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [results, setResults] = useState<Results | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [timeRange, setTimeRange] = useState('all');
-  const refreshInterval = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    fetchAnalytics();
+    let cancelled = false;
+    Promise.all([
+      fetch(`/api/events/${params.id}`).then((r) => r.json()),
+      fetch(`/api/events/${params.id}/results`).then((r) => r.json()),
+      fetch(`/api/events/${params.id}/analytics?range=all`).then((r) => r.json()),
+    ])
+      .then(([e, r, a]) => {
+        if (cancelled) return;
+        setEvent(e?.event ?? null);
+        setResults(r?.results ?? null);
+        setAnalytics(a?.analytics ?? null);
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+  }, [params.id]);
 
-    // Set up real-time updates every 30 seconds
-    refreshInterval.current = setInterval(() => {
-      if (!loading) {
-        fetchAnalytics(true);
-      }
-    }, 30000);
-
-    return () => {
-      if (refreshInterval.current) {
-        clearInterval(refreshInterval.current);
-      }
-    };
-  }, [params.id, timeRange]);
-
-  const fetchAnalytics = async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    if (isRefresh) setRefreshing(true);
-
-    try {
-      // Fetch event details
-      const eventResponse = await fetch(`/api/events/${params.id}`);
-      const eventData = await eventResponse.json();
-
-      // Fetch analytics data
-      const analyticsResponse = await fetch(`/api/events/${params.id}/analytics?range=${timeRange}`);
-      const analyticsData = await analyticsResponse.json();
-
-      if (eventData.success) {
-        setEvent(eventData.event);
-      }
-
-      if (analyticsData.success) {
-        setAnalytics(analyticsData.analytics);
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to load analytics data',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load analytics data',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const exportData = () => {
-    if (!analytics) return;
-
-    const csvData = [
-      ['Metric', 'Value'],
-      ['Total Votes', analytics.voting.total_votes],
-      ['Unique Voters', analytics.voting.unique_voters],
-      ['Avg Credits Used', analytics.voting.avg_credits_used],
-      ['Total Clusters', analytics.cluster_analysis?.summary.totalClusters || 0],
-      ['', ''],
-      ['Option', 'Credits', 'Votes', 'Quadratic Score'],
-      ...analytics.option_performance.map((option: any) => [
-        option.title,
-        option.total_credits,
-        option.vote_count,
-        option.quadratic_votes.toFixed(2)
-      ])
-    ];
-
-    const csvContent = csvData.map(row => row.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${event?.title || 'event'}-analytics.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    toast({
-      title: 'Analytics exported',
-      description: 'Advanced analytics data has been downloaded as CSV.',
-    });
-  };
-
-  if (loading || !event || !analytics) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-paper">
         <Navigation />
-        <div className="container mx-auto py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-            <p className="text-gray-600">Loading advanced analytics...</p>
-          </div>
+        <div className="mx-auto max-w-5xl px-5 md:px-8 py-20 font-mono text-[11px] uppercase tracking-widest text-ink-3">
+          Tallying…
         </div>
       </div>
     );
   }
 
-  const isEventActive = () => {
-    const now = new Date();
-    return now >= new Date(event.startTime) && now <= new Date(event.endTime);
-  };
+  if (!event || !results) {
+    return (
+      <div className="min-h-screen bg-paper">
+        <Navigation />
+        <div className="mx-auto max-w-md px-5 md:px-8 py-20 text-center">
+          <Sqrt size="md" className="opacity-30" />
+          <h1 className="mt-4 font-display text-3xl text-ink">Tally not available.</h1>
+          <p className="mt-2 font-serif text-ink-2">
+            This event may not have results yet.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  // Prepare chart data
-  const pieChartData = analytics.option_performance.map((option: any, index: number) => ({
-    name: option.title,
-    value: option.quadratic_votes,
-    fill: `hsl(${(index * 137.5) % 360}, 70%, 60%)`
-  }));
-
-  const barChartData = analytics.option_performance.map((option: any) => ({
-    name: option.title.length > 20 ? option.title.substring(0, 20) + '...' : option.title,
-    credits: option.total_credits,
-    votes: option.vote_count,
-    quadratic: option.quadratic_votes
-  }));
+  const framework = event.decisionFramework;
+  const isBinary = framework?.framework_type === 'binary_selection';
+  const isClosed = new Date(event.endTime) < new Date();
+  const totalVoters = analytics?.voting?.total_votes ?? results?.participation?.total_voters ?? 0;
+  const totalCredits = analytics?.voting?.total_credits_used ?? 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
+    <div className="min-h-screen bg-paper text-ink">
+      <Navigation eventId={params.id as string} eventTitle={event.title} />
 
-      <div className="container mx-auto py-8">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <Button
-              variant="ghost"
-              onClick={() => router.push(`/events/${params.id}`)}
-              className="mb-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Event
-            </Button>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Advanced Analytics Dashboard
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Comprehensive insights for: <span className="font-medium">{event.title}</span>
-            </p>
-          </div>
+      {/* HEADER — final tally */}
+      <section className="relative overflow-hidden border-b border-ink/15">
+        <GraphPaper aria-hidden className="absolute inset-0 opacity-60" />
+        <div
+          aria-hidden
+          className="absolute left-12 top-0 bottom-0 w-px bg-terracotta/40 hidden md:block"
+        />
 
-          <div className="flex items-center gap-3">
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="7d">Last 7 Days</SelectItem>
-                <SelectItem value="24h">Last 24 Hours</SelectItem>
-                <SelectItem value="1h">Last Hour</SelectItem>
-              </SelectContent>
-            </Select>
+        <div className="relative mx-auto max-w-6xl px-5 md:px-8 py-12 md:py-16">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div className="max-w-3xl">
+              <SectionLabel>{isClosed ? 'Final tally' : 'Live tally'}</SectionLabel>
+              <h1 className="mt-3 font-display text-[36px] sm:text-[48px] lg:text-[56px] leading-[1.02] tracking-[-0.02em] text-ink anim-ink text-balance">
+                {event.title}
+              </h1>
+              <div className="mt-5 flex flex-wrap items-baseline gap-x-8 gap-y-2 anim-ink [animation-delay:120ms]">
+                <Spec label="Voters">{totalVoters}</Spec>
+                <Spec label="Credits spent">{totalCredits.toLocaleString()}</Spec>
+                <Spec label="Method">votes = √credits</Spec>
+                {isBinary ? (
+                  <Spec label="Cut rule">
+                    {framework.config.threshold_mode === 'top_n' &&
+                      `Top ${framework.config.top_n_count}`}
+                    {framework.config.threshold_mode === 'percentage' &&
+                      `≥ ${framework.config.percentage_threshold}%`}
+                    {framework.config.threshold_mode === 'absolute_votes' &&
+                      `≥ ${framework.config.absolute_vote_threshold} votes`}
+                    {framework.config.threshold_mode === 'above_average' &&
+                      'Above average'}
+                  </Spec>
+                ) : (
+                  <Spec label="Pool">
+                    {framework.config.resource_symbol}
+                    {Number(framework.config.total_pool_amount).toLocaleString()}{' '}
+                    {framework.config.resource_name}
+                  </Spec>
+                )}
+              </div>
+            </div>
 
-            <Button
-              variant="outline"
-              onClick={() => fetchAnalytics(true)}
-              disabled={refreshing}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-
-            <Button onClick={exportData} className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Export
-            </Button>
+            <Stamp tone={isClosed ? 'wine' : 'sage'} rotate={-3}>
+              {isClosed ? 'Final · Closed' : 'Live · In session'}
+            </Stamp>
           </div>
         </div>
+      </section>
 
-        {/* Live Status */}
-        {isEventActive() && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-green-600" />
-              <span className="font-medium text-green-900">Live Event</span>
-              <span className="text-green-700">• Real-time data updates</span>
-              {refreshing && <span className="text-green-600">• Refreshing...</span>}
-            </div>
-          </div>
+      {/* BODY */}
+      <section className="mx-auto max-w-6xl px-5 md:px-8 py-12 md:py-16">
+        {isBinary ? (
+          <BinaryReport results={results.results} />
+        ) : (
+          <ProportionalReport results={results.results} />
         )}
 
-        {/* Overview Stats */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Unique Voters
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600">{analytics.voting.unique_voters}</div>
-              <div className="text-sm text-gray-500 mt-1">
-                {analytics.voting.total_votes} total votes
-              </div>
-            </CardContent>
-          </Card>
+        {/* Participation chart */}
+        {analytics?.participation_over_time?.length > 0 && (
+          <SchematicCard className="p-7 md:p-9 mt-10">
+            <SectionLabel number={3}>Participation over time</SectionLabel>
+            <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
+              When the votes came in.
+            </h2>
+            <ParticipationChart data={analytics.participation_over_time} />
+          </SchematicCard>
+        )}
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                Avg Credits Used
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                {analytics.voting.avg_credits_used.toFixed(1)}
-              </div>
-              <div className="text-sm text-gray-500 mt-1">
-                of {event.creditsPerVoter} available
-              </div>
-              <Progress
-                value={(analytics.voting.avg_credits_used / event.creditsPerVoter) * 100}
-                className="mt-2"
-              />
-            </CardContent>
-          </Card>
+        {/* Export */}
+        {isClosed && (
+          <div className="mt-10 flex flex-wrap gap-3">
+            <a
+              href={`/api/events/${params.id}/export?format=standard`}
+              className="btn-paper"
+              target="_blank"
+              rel="noreferrer"
+            >
+              ↓ CSV · standard
+            </a>
+            <a
+              href={`/api/events/${params.id}/export?format=gnosis`}
+              className="btn-paper"
+              target="_blank"
+              rel="noreferrer"
+            >
+              ↓ CSV · Gnosis Safe airdrop
+            </a>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <Network className="w-4 h-4" />
-                Voter Clusters
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-purple-600">
-                {analytics.cluster_analysis?.summary.totalClusters || 0}
-              </div>
-              <div className="text-sm text-gray-500 mt-1">
-                {((analytics.cluster_analysis?.summary.diversity || 0) * 100).toFixed(0)}% diversity
-              </div>
-            </CardContent>
-          </Card>
+/* ────────────────────── BINARY REPORT ────────────────────── */
+function BinaryReport({ results }: { results: any }) {
+  const selected = results.selected_options ?? [];
+  const notSelected = results.not_selected_options ?? [];
+  const margin = results.selection_margin;
+  const all = [...selected, ...notSelected];
+  const max = Math.max(...all.map((o: any) => o.votes), 1);
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                <Eye className="w-4 h-4" />
-                Network Edges
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-orange-600">
-                {analytics.network_graph?.edges?.length || 0}
-              </div>
-              <div className="text-sm text-gray-500 mt-1">
-                vote connections
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+  return (
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <SchematicCard accent className="p-6 lg:col-span-2">
+          <div className="flex items-baseline justify-between">
+            <SectionLabel number={1}>Selected</SectionLabel>
+            <span className="font-mono text-[10.5px] uppercase tracking-widest text-blueprint">
+              {selected.length} on the cut · margin {margin?.toFixed(1) ?? '—'}
+            </span>
+          </div>
+          <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
+            These options crossed the line.
+          </h2>
 
-        {/* Advanced Visualizations */}
-        <Tabs defaultValue="network" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="network">Network Graph</TabsTrigger>
-            <TabsTrigger value="clusters">Cluster Analysis</TabsTrigger>
-            <TabsTrigger value="charts">Charts</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="results">Results</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="network" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Network className="w-5 h-5" />
-                  Voter Network Graph
-                </CardTitle>
-                <CardDescription>
-                  Interactive visualization showing voters as nodes and their votes as weighted edges
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <NetworkGraph
-                  data={analytics.network_graph}
-                  width={800}
-                  height={600}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="clusters" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Voter Cluster Analysis
-                </CardTitle>
-                <CardDescription>
-                  Analysis of voting patterns and voter groupings
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ClusterAnalysis data={analytics.cluster_analysis} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="charts" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5" />
-                    Results Comparison
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={barChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="quadratic" fill="#3B82F6" name="Quadratic Score" />
-                      <Bar dataKey="credits" fill="#10B981" name="Total Credits" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <PieChart className="w-5 h-5" />
-                    Vote Distribution
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <RechartsePieChart>
-                      <Pie
-                        data={pieChartData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        dataKey="value"
-                        label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {pieChartData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </RechartsePieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="timeline" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
-                  Real-time Voting Timeline
-                </CardTitle>
-                <CardDescription>
-                  How voting activity progressed over time
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TimelineVisualization data={analytics.participation_over_time} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="results" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="w-5 h-5" />
-                  Final Results
-                </CardTitle>
-                <CardDescription>
-                  Ranked results using quadratic voting calculations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {analytics.option_performance
-                    .sort((a: any, b: any) => b.quadratic_votes - a.quadratic_votes)
-                    .map((option: any, index: number) => (
-                      <div key={option.option_id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="flex items-center gap-2">
-                              {index === 0 && <Trophy className="w-5 h-5 text-yellow-500" />}
-                              <Badge variant={index === 0 ? 'default' : 'outline'}>
-                                #{index + 1}
-                              </Badge>
-                            </div>
-                            <h4 className="font-medium">{option.title}</h4>
-                          </div>
-                          <div className="grid grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-600">Quadratic Score:</span>
-                              <span className="font-bold ml-2">{option.quadratic_votes.toFixed(2)}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Total Credits:</span>
-                              <span className="font-bold ml-2">{option.total_credits}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Vote Count:</span>
-                              <span className="font-bold ml-2">{option.vote_count}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+          <ul className="mt-6 divide-y divide-ink/12">
+            {all.map((opt: any, i: number) => (
+              <li
+                key={opt.option_id}
+                className={cn(
+                  'flex items-center gap-4 py-3 first:pt-0',
+                  !opt.selected && 'opacity-65'
+                )}
+              >
+                <NumberMarker n={opt.rank ?? i + 1} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-[17px] text-ink truncate">
+                    {opt.title}
+                  </div>
+                  <div className="mt-1.5 relative h-2 border border-ink/25 bg-paper">
+                    <div
+                      className={cn(
+                        'h-full',
+                        opt.selected ? 'bg-blueprint' : 'bg-ink/30'
+                      )}
+                      style={{ width: (opt.votes / max) * 100 + '%' }}
+                    />
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                <div className="shrink-0 text-right min-w-[110px]">
+                  <div className="font-display text-[22px] tabular-nums text-ink leading-none">
+                    {opt.votes.toFixed(1)}
+                  </div>
+                  <div
+                    className={cn(
+                      'font-mono text-[10px] uppercase tracking-widest mt-1',
+                      opt.selected ? 'text-blueprint' : 'text-ink-3'
+                    )}
+                  >
+                    {opt.selected ? '✓ Selected' : '— Not selected'}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </SchematicCard>
+
+        <SchematicCard className="p-6 self-start">
+          <SectionLabel>Reading this</SectionLabel>
+          <p className="mt-3 font-serif text-[15px] text-ink-2 leading-snug">
+            Bars show <em>quadratic</em> votes, not raw credits. The dashed
+            line marks where the cut was set. Margin is the distance between
+            the last in and the first out.
+          </p>
+
+          <hr className="ink-rule" />
+          <SpecRow label="Selected" value={selected.length} />
+          <SpecRow label="Not selected" value={notSelected.length} />
+          <SpecRow
+            label="Margin"
+            value={margin !== undefined ? margin.toFixed(2) : '—'}
+          />
+        </SchematicCard>
       </div>
+    </>
+  );
+}
+
+/* ────────────────────── PROPORTIONAL REPORT ────────────────────── */
+function ProportionalReport({ results }: { results: any }) {
+  const distributions = results.distributions ?? [];
+  const totalPool = results.total_pool;
+  const totalAllocated = results.total_allocated ?? 0;
+  const gini = results.gini_coefficient ?? 0;
+
+  return (
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <SchematicCard accent className="p-6 lg:col-span-2">
+          <div className="flex items-baseline justify-between">
+            <SectionLabel number={1}>Distribution</SectionLabel>
+            <span className="font-mono text-[10.5px] uppercase tracking-widest text-terracotta">
+              {results.resource_symbol}
+              {totalAllocated.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}{' '}
+              allocated
+            </span>
+          </div>
+          <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
+            How the pool splits.
+          </h2>
+
+          {/* Stacked bar */}
+          <div className="mt-6">
+            <div className="flex h-9 border border-ink/25 overflow-hidden">
+              {distributions.map((d: any, i: number) => (
+                <div
+                  key={d.option_id}
+                  title={`${d.title}: ${d.allocation_percentage.toFixed(1)}%`}
+                  className={cn(
+                    DIST_COLORS[i % DIST_COLORS.length],
+                    'transition-opacity hover:opacity-80'
+                  )}
+                  style={{ width: d.allocation_percentage + '%' }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <ul className="mt-6 divide-y divide-ink/12">
+            {distributions.map((d: any, i: number) => (
+              <li
+                key={d.option_id}
+                className="flex items-center gap-4 py-3 first:pt-0"
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    'inline-block h-3 w-3 shrink-0',
+                    DIST_COLORS[i % DIST_COLORS.length]
+                  )}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="font-display text-[17px] text-ink truncate">
+                    {d.title}
+                  </div>
+                  <div className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 mt-0.5">
+                    {d.votes.toFixed(1)} votes · {d.allocation_percentage.toFixed(1)}% of pool
+                  </div>
+                </div>
+                <div className="shrink-0 text-right min-w-[140px]">
+                  <div className="font-display text-[22px] tabular-nums text-ink leading-none">
+                    {results.resource_symbol}
+                    {d.allocation_amount.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-3 mt-1">
+                    {results.resource_name}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </SchematicCard>
+
+        <SchematicCard className="p-6 self-start">
+          <SectionLabel>Reading this</SectionLabel>
+          <p className="mt-3 font-serif text-[15px] text-ink-2 leading-snug">
+            Each option&apos;s share of the pool is proportional to the
+            quadratic votes it received. The Gini coefficient below
+            summarises how concentrated the result is.
+          </p>
+
+          <hr className="ink-rule" />
+          <SpecRow label="Pool" value={`${results.resource_symbol}${Number(totalPool).toLocaleString()}`} />
+          <SpecRow
+            label="Allocated"
+            value={`${results.resource_symbol}${totalAllocated.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+          />
+          <SpecRow
+            label="Gini"
+            value={
+              <span title="0 = perfectly equal · 1 = total concentration">
+                {gini.toFixed(3)}{' '}
+                <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 ml-1">
+                  {gini < 0.2 ? 'even' : gini < 0.4 ? 'mixed' : 'concentrated'}
+                </span>
+              </span>
+            }
+          />
+        </SchematicCard>
+      </div>
+    </>
+  );
+}
+
+const DIST_COLORS = [
+  'bg-terracotta',
+  'bg-blueprint',
+  'bg-sage',
+  'bg-gold',
+  'bg-terracotta-2',
+  'bg-blueprint-2',
+];
+
+/* ───── timeline ───── */
+function ParticipationChart({ data }: { data: any[] }) {
+  const sorted = [...data].sort((a, b) =>
+    a.timestamp.localeCompare(b.timestamp)
+  );
+  const max = Math.max(...sorted.map((d) => d.voteCount), 1);
+  return (
+    <div className="mt-6 flex items-end gap-1 h-40 border-b border-ink/25 pl-2 pr-2">
+      {sorted.map((d, i) => (
+        <div
+          key={d.timestamp}
+          className="relative flex-1 group"
+          style={{ height: '100%' }}
+          title={`${new Date(d.timestamp).toLocaleString()} — ${d.voteCount} votes`}
+        >
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-blueprint group-hover:bg-blueprint-2 transition-colors"
+            style={{ height: (d.voteCount / max) * 100 + '%' }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Spec({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col">
+      <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+        {label}
+      </span>
+      <span className="font-display text-[17px] text-ink leading-tight tabular-nums">
+        {children}
+      </span>
     </div>
   );
 }

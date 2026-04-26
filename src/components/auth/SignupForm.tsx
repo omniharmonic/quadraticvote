@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthShell, FieldRow } from './AuthShell';
+import { Stamp } from '@/components/schematic';
 
 export default function SignupForm() {
   const [email, setEmail] = useState('');
@@ -18,39 +20,18 @@ export default function SignupForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (password !== confirmPassword) return setError('Passwords do not match.');
+    if (password.length < 6) return setError('Password must be at least 6 characters.');
     setLoading(true);
-
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    // Validate password strength
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setLoading(false);
-      return;
-    }
-
     try {
       const { user, error } = await signUp(email, password);
-
-      if (error) {
-        setError(error.message);
-        return;
-      }
-
+      if (error) return setError(error.message);
       if (user) {
         setSuccess(true);
-        // Note: User will need to verify email before they can sign in
-        setTimeout(() => {
-          router.push('/auth/login?message=Please check your email to verify your account');
-        }, 3000);
+        setTimeout(() => router.push('/auth/login'), 3500);
       }
-    } catch (error) {
-      setError('An unexpected error occurred');
+    } catch {
+      setError('An unexpected error occurred. Try again.');
     } finally {
       setLoading(false);
     }
@@ -58,116 +39,108 @@ export default function SignupForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div className="text-center">
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-              Account Created Successfully!
-            </h2>
-            <div className="mt-4 p-4 bg-green-50 rounded-md">
-              <p className="text-sm text-green-700">
-                Please check your email to verify your account before signing in.
-              </p>
-            </div>
-            <p className="mt-4 text-sm text-gray-600">
-              Redirecting to login page...
-            </p>
-          </div>
+      <AuthShell
+        eyebrow="On the way"
+        title="Check your inbox."
+        lede="We sent a confirmation link to your email. Click it to verify the account, then come back to sign in."
+      >
+        <div className="schematic schematic-tick p-6">
+          <Stamp tone="sage" rotate={-2}>
+            Pending verification
+          </Stamp>
+          <p className="mt-4 font-serif text-[15px] text-ink-2">
+            Sent to <span className="text-ink font-medium">{email}</span>.
+          </p>
+          <p className="mt-2 font-serif text-[14.5px] text-ink-3">
+            Redirecting to sign in shortly…
+          </p>
         </div>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/auth/login" className="font-medium text-indigo-600 hover:text-indigo-500">
-              sign in to your existing account
-            </Link>
-          </p>
-        </div>
+    <AuthShell
+      eyebrow="Open an account"
+      title="Pull up a chair."
+      lede="A free account lets you draft events, invite voters, and keep a record. We hold onto your email and nothing else."
+      footnote={
+        <p>
+          Already have one?{' '}
+          <Link
+            href="/auth/login"
+            className="text-blueprint underline underline-offset-4 hover:text-ink"
+          >
+            Sign in →
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <FieldRow label="Email" htmlFor="email">
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            className="field w-full"
+            placeholder="you@yourdomain"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </FieldRow>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email-address" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
+        <FieldRow
+          label="Password"
+          htmlFor="password"
+          hint={<span>Min. 6 characters</span>}
+        >
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            required
+            className="field w-full"
+            placeholder="• • • • • • • •"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </FieldRow>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Password (minimum 6 characters)"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+        <FieldRow label="Confirm" htmlFor="confirm">
+          <input
+            id="confirm"
+            name="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            required
+            className="field w-full"
+            placeholder="• • • • • • • •"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        </FieldRow>
 
-            <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <input
-                id="confirm-password"
-                name="confirm-password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Confirm password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
+        {error && (
+          <div
+            role="alert"
+            className="border border-wine/30 bg-wine/8 px-3 py-2 text-[14px] text-wine font-serif"
+          >
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700">{error}</div>
-            </div>
-          )}
+        <button type="submit" disabled={loading} className="btn-ink w-full">
+          {loading ? 'Creating…' : 'Open account'}
+        </button>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {loading ? 'Creating account...' : 'Create account'}
-            </button>
-          </div>
-
-          <div className="text-xs text-gray-500 text-center">
-            By creating an account, you agree to our terms of service and privacy policy.
-          </div>
-        </form>
-      </div>
-    </div>
+        <p className="font-serif text-[13.5px] text-ink-3">
+          By creating an account you agree to our terms of service and
+          privacy policy. We don&apos;t sell anything; you&apos;re not the product.
+        </p>
+      </form>
+    </AuthShell>
   );
 }

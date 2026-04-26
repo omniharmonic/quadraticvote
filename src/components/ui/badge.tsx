@@ -2,20 +2,27 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils/cn';
 
+/**
+ * Engineering tag — small monospace label with a thin border.
+ * Used for framework type, status, role, etc.
+ */
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-widest transition-colors',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
-        outline: 'text-foreground',
+        default: 'border-ink/35 bg-paper-2 text-ink-2',
+        outline: 'border-ink/55 bg-paper text-ink',
+        blueprint: 'border-blueprint/40 bg-blueprint/10 text-blueprint',
+        terracotta: 'border-terracotta/40 bg-terracotta/10 text-terracotta',
+        sage: 'border-sage/40 bg-sage/10 text-sage',
+        wine: 'border-wine/40 bg-wine/10 text-wine',
+        gold: 'border-gold/40 bg-gold/10 text-gold',
+        secondary: 'border-ink/20 bg-paper-3 text-ink-2',
+        destructive: 'border-wine/40 bg-wine/10 text-wine',
       },
     },
-    defaultVariants: {
-      variant: 'default',
-    },
+    defaultVariants: { variant: 'default' },
   }
 );
 
@@ -28,4 +35,3 @@ function Badge({ className, variant, ...props }: BadgeProps) {
 }
 
 export { Badge, badgeVariants };
-

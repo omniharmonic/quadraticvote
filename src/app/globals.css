@@ -2,59 +2,392 @@
 @tailwind components;
 @tailwind utilities;
 
+/* -------------------------------------------------------------------------
+   Civic Drafting Studio — design tokens
+   Drafting table meets kitchen table. Schematic precision, paper warmth.
+   ------------------------------------------------------------------------- */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    /* Paper & ink */
+    --paper:        247 241 227;   /* #f7f1e3 — warm cream */
+    --paper-2:      241 233 213;   /* #f1e9d5 — slightly toasted */
+    --paper-3:      232 222 197;   /* #e8dec5 — corner-shadow paper */
+    --grid:         220 209 178;   /* #dcd1b2 — graph paper line */
+    --grid-strong:  198 184 148;   /* major grid */
+
+    --ink:          26 24 20;      /* #1a1814 — deep ink */
+    --ink-2:        58 50 38;      /* body text on cream */
+    --ink-3:        108 96 76;     /* soft ink (annotations) */
+    --ink-4:        158 142 116;   /* faint ink (graph callouts) */
+
+    /* Schematic palette */
+    --blueprint:    24  56  92;    /* #18385c — drafting blue */
+    --blueprint-2:  52  92  140;
+    --terracotta:   194  82  39;   /* #c25227 — civic warmth accent */
+    --terracotta-2: 230 145  96;
+    --sage:         88 116  72;    /* #586c48 — affirmative state */
+    --wine:        134  44  34;    /* destructive */
+    --gold:        178 132  46;    /* highlight / stamp */
+
+    /* shadcn token bridge — keep working */
+    --background:        38 50% 93%;       /* maps roughly to --paper */
+    --foreground:        30 14% 9%;
+    --card:              38 50% 96%;
+    --card-foreground:   30 14% 9%;
+    --popover:           38 50% 96%;
+    --popover-foreground: 30 14% 9%;
+    --primary:           212 59% 23%;      /* blueprint */
+    --primary-foreground: 38 50% 96%;
+    --secondary:         36 32% 86%;
+    --secondary-foreground: 30 14% 9%;
+    --muted:             36 32% 88%;
+    --muted-foreground:  35 18% 35%;
+    --accent:            16 67% 46%;       /* terracotta */
+    --accent-foreground: 38 50% 96%;
+    --destructive:       6 60% 33%;
+    --destructive-foreground: 38 50% 96%;
+    --border:            36 28% 75%;
+    --input:             36 28% 75%;
+    --ring:              212 59% 23%;
+    --radius:            6px;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-  }
-}
+  html { color-scheme: light; }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
   body {
-    @apply bg-background text-foreground;
+    background:
+      radial-gradient(ellipse 1200px 700px at 80% -10%,
+        rgba(194,82,39,0.04), transparent 60%),
+      radial-gradient(ellipse 900px 600px at -10% 40%,
+        rgba(24,56,92,0.05), transparent 60%),
+      rgb(var(--paper));
+    color: rgb(var(--ink));
+    font-family: 'Newsreader', 'Iowan Old Style', 'Source Serif Pro', Georgia, serif;
+    font-feature-settings: "kern", "liga", "calt", "ss01";
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 18;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Subtle grain — a hint of paper, never noisy */
+  body::before {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.16  0 0 0 0 0.13  0 0 0 0 0.10  0 0 0 0.32 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.45'/></svg>");
+    opacity: 0.06;
+    mix-blend-mode: multiply;
+  }
+
+  ::selection {
+    background: rgb(var(--blueprint) / 0.18);
+    color: rgb(var(--ink));
+  }
+
+  h1, h2, h3, h4, .display {
+    font-family: 'Fraunces', 'Tiempos Headline', 'Iowan Old Style', Georgia, serif;
+    font-feature-settings: "kern", "liga", "ss01", "ss02";
+    font-variation-settings: "opsz" 144, "SOFT" 50, "WONK" 1;
+    color: rgb(var(--ink));
+    letter-spacing: -0.018em;
+  }
+
+  code, kbd, samp, .mono {
+    font-family: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+    font-feature-settings: "ss02", "calt";
   }
 }
 
+/* -------------------------------------------------------------------------
+   Component primitives — the schematic kit
+   ------------------------------------------------------------------------- */
+
+@layer components {
+  /* Graph-paper background overlay (use as ::before on hero/sections) */
+  .bg-graph {
+    background-image:
+      linear-gradient(rgb(var(--grid) / 0.45) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--grid) / 0.45) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: 0 0, 0 0;
+  }
+
+  .bg-graph-fine {
+    background-image:
+      linear-gradient(rgb(var(--grid) / 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--grid) / 0.35) 1px, transparent 1px),
+      linear-gradient(rgb(var(--grid-strong) / 0.5) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--grid-strong) / 0.5) 1px, transparent 1px);
+    background-size: 12px 12px, 12px 12px, 96px 96px, 96px 96px;
+  }
+
+  .bg-paper-card {
+    background:
+      linear-gradient(180deg, rgb(var(--paper) / 1) 0%, rgb(var(--paper-2) / 1) 100%);
+  }
+
+  /* Schematic card — index card with corner ticks */
+  .schematic {
+    position: relative;
+    background: rgb(var(--paper));
+    border: 1px solid rgb(var(--ink) / 0.18);
+    border-radius: 4px;
+    box-shadow:
+      0 1px 0 rgb(var(--ink) / 0.04),
+      0 12px 24px -16px rgb(var(--ink) / 0.18),
+      inset 0 0 0 1px rgb(var(--paper-2) / 0.5);
+  }
+
+  .schematic--accent {
+    border-color: rgb(var(--blueprint) / 0.28);
+    box-shadow:
+      0 1px 0 rgb(var(--ink) / 0.04),
+      0 16px 30px -18px rgb(var(--blueprint) / 0.25),
+      inset 0 0 0 1px rgb(var(--paper-2) / 0.6);
+  }
+
+  .schematic-tick::before,
+  .schematic-tick::after {
+    content: "";
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-color: rgb(var(--ink) / 0.45);
+  }
+  .schematic-tick::before {
+    top: -1px; left: -1px;
+    border-top: 1.5px solid;
+    border-left: 1.5px solid;
+  }
+  .schematic-tick::after {
+    bottom: -1px; right: -1px;
+    border-bottom: 1.5px solid;
+    border-right: 1.5px solid;
+  }
+
+  /* Section label — § 02 · CIVIC DECISIONS */
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgb(var(--ink-3));
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+
+  .section-label::before {
+    content: "§";
+    color: rgb(var(--blueprint));
+    font-style: normal;
+  }
+
+  /* Dashed construction line */
+  .construction-line {
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgb(var(--ink) / 0.35) 0 6px,
+      transparent 6px 12px
+    );
+    height: 1px;
+    width: 100%;
+  }
+
+  .construction-line-v {
+    background-image: repeating-linear-gradient(
+      0deg,
+      rgb(var(--ink) / 0.35) 0 6px,
+      transparent 6px 12px
+    );
+    width: 1px;
+    height: 100%;
+  }
+
+  /* Stamp — the "Final Tally" / "Approved" / "Draft" plate */
+  .stamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.25em 0.7em;
+    border: 1.5px solid currentColor;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    transform: rotate(-1.5deg);
+    line-height: 1;
+  }
+
+  /* Annotation label, like an architectural callout */
+  .callout {
+    position: relative;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: rgb(var(--ink-3));
+  }
+
+  /* Big sigma/sqrt motif used in hero */
+  .glyph-sqrt {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: rgb(var(--blueprint));
+    line-height: 0.8;
+  }
+
+  /* Buttons — drafting-table ink */
+  .btn-ink {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    background: rgb(var(--ink));
+    color: rgb(var(--paper));
+    border: 1.5px solid rgb(var(--ink));
+    border-radius: 3px;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 200ms ease, background 160ms ease;
+    box-shadow: 0 2px 0 rgb(var(--ink) / 0.85);
+  }
+  .btn-ink:hover { transform: translateY(-1px); box-shadow: 0 3px 0 rgb(var(--ink) / 0.85); }
+  .btn-ink:active { transform: translateY(1px); box-shadow: 0 0 0 rgb(var(--ink) / 0.85); }
+
+  .btn-paper {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.05rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    background: rgb(var(--paper));
+    color: rgb(var(--ink));
+    border: 1.5px solid rgb(var(--ink) / 0.55);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: transform 120ms ease, background 160ms ease, border-color 160ms ease;
+  }
+  .btn-paper:hover { background: rgb(var(--paper-2)); border-color: rgb(var(--ink)); }
+
+  .btn-blueprint {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    background: rgb(var(--blueprint));
+    color: rgb(var(--paper));
+    border: 1.5px solid rgb(var(--blueprint));
+    border-radius: 3px;
+    cursor: pointer;
+    transition: transform 120ms ease, background 160ms ease;
+    box-shadow: 0 2px 0 rgb(var(--blueprint) / 0.6);
+  }
+  .btn-blueprint:hover { transform: translateY(-1px); }
+
+  .btn-terra {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    background: rgb(var(--terracotta));
+    color: rgb(var(--paper));
+    border: 1.5px solid rgb(var(--terracotta));
+    border-radius: 3px;
+    cursor: pointer;
+    box-shadow: 0 2px 0 rgb(var(--terracotta) / 0.6);
+    transition: transform 120ms ease;
+  }
+  .btn-terra:hover { transform: translateY(-1px); }
+
+  /* Dimension line — like an architectural drawing */
+  .dim-line {
+    position: relative;
+    height: 1px;
+    background: rgb(var(--ink) / 0.35);
+  }
+  .dim-line::before, .dim-line::after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    width: 1px; height: 9px;
+    background: rgb(var(--ink) / 0.55);
+  }
+  .dim-line::before { left: 0; }
+  .dim-line::after  { right: 0; }
+
+  /* Field input — paper sheet */
+  .field {
+    background: rgb(var(--paper));
+    border: 1.5px solid rgb(var(--ink) / 0.25);
+    border-radius: 3px;
+    padding: 0.65rem 0.8rem;
+    font-family: 'Newsreader', serif;
+    font-size: 16px;
+    color: rgb(var(--ink));
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+  }
+  .field:focus {
+    outline: none;
+    border-color: rgb(var(--blueprint));
+    box-shadow: 0 0 0 3px rgb(var(--blueprint) / 0.12);
+  }
+
+  .label-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: rgb(var(--ink-3));
+  }
+
+  /* Underline annotation */
+  .scribble-underline {
+    background-image: linear-gradient(rgb(var(--terracotta)) 0 0);
+    background-position: 0 92%;
+    background-repeat: no-repeat;
+    background-size: 100% 0.18em;
+    padding-bottom: 0.04em;
+  }
+
+  .ink-rule {
+    border: 0;
+    height: 1px;
+    background: rgb(var(--ink) / 0.25);
+    margin: 1.25rem 0;
+  }
+
+  .ink-rule-double {
+    border: 0;
+    height: 4px;
+    background:
+      linear-gradient(rgb(var(--ink) / 0.55), rgb(var(--ink) / 0.55)) top/100% 1px no-repeat,
+      linear-gradient(rgb(var(--ink) / 0.55), rgb(var(--ink) / 0.55)) bottom/100% 1px no-repeat;
+  }
+}
+
+@layer utilities {
+  /* Page-load micro-reveals */
+  @keyframes ink-rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes draft-in {
+    from { opacity: 0; transform: translateY(14px) rotate(-0.2deg); }
+    to   { opacity: 1; transform: translateY(0) rotate(0); }
+  }
+  .anim-ink { animation: ink-rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .anim-draft { animation: draft-in 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+}

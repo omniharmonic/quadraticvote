@@ -2,24 +2,35 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Check, Info, RefreshCw } from 'lucide-react';
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
 import Navigation from '@/components/layout/navigation';
+import {
+  GraphPaper,
+  SectionLabel,
+  SchematicCard,
+  Stamp,
+  Sqrt,
+  NumberMarker,
+} from '@/components/schematic';
+import { cn } from '@/lib/utils/cn';
+
+export const dynamic = 'force-dynamic';
 
 export default function VotingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [event, setEvent] = useState<any>(null);
   const [allocations, setAllocations] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -30,7 +41,23 @@ export default function VotingPage() {
   const [codeInput, setCodeInput] = useState<string>('');
   const [codeVerified, setCodeVerified] = useState<boolean>(false);
 
-  // Get code from URL params or allow anonymous access for public events
+  /* ─── load event ─── */
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/events/${params.id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || !d.event) return;
+        setEvent(d.event);
+        const init: Record<string, number> = {};
+        d.event.options?.forEach((o: any) => (init[o.id] = 0));
+        setAllocations(init);
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+  }, [params.id]);
+
+  /* ─── code from URL or anon for public ─── */
   useEffect(() => {
     const urlCode = searchParams?.get('code');
     if (urlCode) {
@@ -38,145 +65,79 @@ export default function VotingPage() {
       setCodeInput(urlCode);
       setCodeVerified(true);
     } else if (event?.visibility === 'public') {
-      // Allow anonymous participation for public events by default
-      // (voteSettings field is temporarily disabled, so default to allowing anonymous)
       setInviteCode('anonymous');
       setCodeVerified(true);
     }
   }, [searchParams, event]);
 
+  /* ─── load existing vote, if any ─── */
   useEffect(() => {
-    fetchEvent();
-    loadExistingVote();
-  }, [params.id]);
-
-  const fetchEvent = async () => {
-    try {
-      const response = await fetch(`/api/events/${params.id}`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        setEvent(data.event);
-        // Initialize allocations
-        const initial: Record<string, number> = {};
-        data.event.options.forEach((opt: any) => {
-          initial[opt.id] = 0;
-        });
-        setAllocations(initial);
-      }
-    } catch (error) {
-      console.error('Failed to load event:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadExistingVote = async () => {
     if (!inviteCode || !codeVerified) return;
-
-    try {
-      const response = await fetch(`/api/events/${params.id}/votes?code=${inviteCode}`);
-      const data = await response.json();
-
-      if (response.ok && data.vote) {
-        setAllocations(data.vote.allocations);
-        toast({
-          title: 'Previous vote loaded',
-          description: 'You can modify your vote and resubmit.',
-        });
-      }
-    } catch (error) {
-      // No existing vote, that's okay
-    }
-  };
+    fetch(`/api/events/${params.id}/votes?code=${inviteCode}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.vote?.allocations) {
+          setAllocations(d.vote.allocations);
+          toast({
+            title: 'Previous draft loaded',
+            description: 'Edit and resubmit to update your vote.',
+          });
+        }
+      })
+      .catch(() => {});
+  }, [inviteCode, codeVerified, params.id]);
 
   const verifyInviteCode = async (code: string) => {
-    try {
-      const response = await fetch(`/api/events/${params.id}/invites/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.valid) {
-        setInviteCode(code);
-        setCodeVerified(true);
-        toast({
-          title: 'Code verified!',
-          description: 'You can now proceed to vote.',
-        });
-        return true;
-      } else {
-        toast({
-          title: 'Invalid code',
-          description: 'Please check your invite code and try again.',
-          variant: 'destructive'
-        });
-        return false;
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to verify code. Please try again.',
-        variant: 'destructive'
-      });
-      return false;
+    const r = await fetch(`/api/events/${params.id}/invites/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    const d = await r.json();
+    if (r.ok && d.valid) {
+      setInviteCode(code);
+      setCodeVerified(true);
+      return true;
     }
+    toast({
+      title: 'Code didn\'t check out',
+      description: 'Double-check it with whoever sent you.',
+      variant: 'destructive',
+    });
+    return false;
   };
 
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (codeInput.trim()) {
-      await verifyInviteCode(codeInput.trim());
-    }
+    if (codeInput.trim()) await verifyInviteCode(codeInput.trim());
   };
 
-  const updateAllocation = (optionId: string, value: number) => {
-    setAllocations(prev => ({
-      ...prev,
-      [optionId]: value,
-    }));
-  };
+  const updateAllocation = (id: string, v: number) =>
+    setAllocations((p) => ({ ...p, [id]: v }));
 
   const resetAllocations = () => {
-    const reset: Record<string, number> = {};
-    event.options.forEach((opt: any) => {
-      reset[opt.id] = 0;
-    });
-    setAllocations(reset);
+    const r: Record<string, number> = {};
+    event.options.forEach((o: any) => (r[o.id] = 0));
+    setAllocations(r);
   };
 
   const handleSubmit = async () => {
     setShowConfirmDialog(false);
     setIsSubmitting(true);
-
     try {
-      const response = await fetch(`/api/events/${params.id}/votes`, {
+      const r = await fetch(`/api/events/${params.id}/votes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          inviteCode,
-          allocations,
-        }),
+        body: JSON.stringify({ inviteCode, allocations }),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: 'Vote submitted successfully!',
-          description: 'Your voice has been heard.',
-        });
-        router.push(`/events/${params.id}/results`);
-      } else {
-        throw new Error(data.message || 'Failed to submit vote');
-      }
-    } catch (error) {
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.message || 'Submission failed');
+      toast({ title: 'Vote on file.', description: 'Thank you for participating.' });
+      router.push(`/events/${params.id}/results`);
+    } catch (err) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to submit vote',
+        title: 'Submission failed',
+        description: err instanceof Error ? err.message : 'Try again.',
         variant: 'destructive',
       });
     } finally {
@@ -186,298 +147,339 @@ export default function VotingPage() {
 
   if (loading || !event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-gray-600">Loading voting interface...</p>
+      <div className="min-h-screen bg-paper">
+        <Navigation />
+        <div className="mx-auto max-w-3xl px-5 md:px-8 py-20 font-mono text-[11px] uppercase tracking-widest text-ink-3">
+          Preparing the ballot…
         </div>
       </div>
     );
   }
 
-  // Show code entry screen if no valid code
+  /* ─── invite-code gate (private events) ─── */
   if (!codeVerified) {
-    const isPublicEvent = event?.visibility === 'public';
-
+    const isPublic = event.visibility === 'public';
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">
-              {isPublicEvent ? 'Join the Vote' : 'Enter Your Invite Code'}
-            </CardTitle>
-            <CardDescription>
-              {isPublicEvent
-                ? 'This is a public voting event. You can participate with or without an invite code.'
-                : 'You need a valid invite code to participate in this voting event.'
-              }
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isPublicEvent && (
-              <div className="mb-4">
-                <Button
-                  onClick={() => {
-                    setInviteCode('anonymous');
-                    setCodeVerified(true);
-                  }}
-                  className="w-full mb-4"
-                >
-                  Continue as Anonymous Voter
-                </Button>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
+      <div className="min-h-screen bg-paper relative">
+        <Navigation eventTitle={event.title} />
+        <GraphPaper aria-hidden className="absolute inset-0 opacity-40 pointer-events-none" />
+        <div className="relative mx-auto max-w-md px-5 md:px-8 py-16">
+          <SectionLabel>Verify</SectionLabel>
+          <h1 className="mt-3 font-display text-4xl text-ink leading-tight text-balance">
+            {isPublic ? 'Step inside.' : 'Show your invitation.'}
+          </h1>
+          <p className="mt-3 font-serif text-[16px] text-ink-2 leading-snug">
+            {isPublic
+              ? 'This event is open to the public — you can vote anonymously, or with the invite code an organizer sent you.'
+              : 'This event is invite-only. Drop in the code from the email you received.'}
+          </p>
+
+          <SchematicCard accent className="mt-8 p-6">
+            <div className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 mb-3">
+              On file
+            </div>
+            <h2 className="font-display text-xl text-ink leading-tight">
+              {event.title}
+            </h2>
+            {event.description && (
+              <p className="mt-1.5 font-serif text-[14px] text-ink-2 leading-snug">
+                {event.description}
+              </p>
+            )}
+          </SchematicCard>
+
+          {isPublic && (
+            <button
+              type="button"
+              className="btn-ink w-full mt-6"
+              onClick={() => {
+                setInviteCode('anonymous');
+                setCodeVerified(true);
+              }}
+            >
+              Continue anonymously →
+            </button>
+          )}
+
+          <form onSubmit={handleCodeSubmit} className="mt-6 space-y-3">
+            <label className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 block">
+              {isPublic ? 'Or use an invite code' : 'Invite code'}
+            </label>
+            <input
+              type="text"
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value)}
+              placeholder="••••-••••-••••"
+              className="field w-full text-center font-mono tracking-widest"
+            />
+            <button
+              type="submit"
+              disabled={!codeInput.trim()}
+              className="btn-paper w-full"
+            >
+              Verify code
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  const totalCredits = event.creditsPerVoter as number;
+  const usedCredits = getTotalCredits(allocations);
+  const remainingCredits = totalCredits - usedCredits;
+  const overBudget = usedCredits > totalCredits;
+  const canSubmit = usedCredits > 0 && !overBudget;
+
+  const quadVotes = calculateQuadraticVotes(allocations);
+  const totalQuadVotes = Object.values(quadVotes).reduce((a, b) => a + b, 0);
+  const framework = event.decisionFramework;
+  const isBinary = framework?.framework_type === 'binary_selection';
+
+  return (
+    <div className="min-h-screen bg-paper text-ink">
+      <Navigation eventTitle={event.title} />
+
+      {/* sticky budget bar — the credit purse */}
+      <div className="sticky top-[57px] z-30 bg-paper/90 backdrop-blur-sm border-b border-ink/15">
+        <div className="mx-auto max-w-4xl px-5 md:px-8 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Sqrt size="sm" className="text-blueprint/80" />
+              <div>
+                <div className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+                  Credit purse · {totalCredits} total
+                </div>
+                <div className="flex items-baseline gap-3 mt-0.5">
+                  <span
+                    className={cn(
+                      'font-display text-[28px] leading-none tabular-nums',
+                      overBudget ? 'text-wine' : 'text-ink'
+                    )}
+                  >
+                    {remainingCredits}
+                  </span>
+                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
+                    remaining
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={resetAllocations}
+                disabled={usedCredits === 0 || isSubmitting}
+                className="btn-paper text-[11px] disabled:opacity-40"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowConfirmDialog(true)}
+                disabled={!canSubmit || isSubmitting}
+                className="btn-ink disabled:opacity-40"
+              >
+                {isSubmitting ? 'Submitting…' : 'Submit ballot →'}
+              </button>
+            </div>
+          </div>
+
+          {/* Budget bar — drawn like a beam in a structural drawing */}
+          <div className="mt-3 relative h-2 border border-ink/25 bg-paper">
+            <div
+              className={cn(
+                'h-full transition-all',
+                overBudget ? 'bg-wine' : 'bg-blueprint'
+              )}
+              style={{ width: Math.min(100, (usedCredits / totalCredits) * 100) + '%' }}
+            />
+            <span
+              aria-hidden
+              className="absolute -top-1 left-0 w-px h-3 bg-ink/40"
+            />
+            <span
+              aria-hidden
+              className="absolute -top-1 right-0 w-px h-3 bg-ink/40"
+            />
+          </div>
+          {overBudget && (
+            <p className="mt-2 font-mono text-[11px] uppercase tracking-widest text-wine">
+              ⚠ Over budget — pull back {usedCredits - totalCredits} credit{usedCredits - totalCredits === 1 ? '' : 's'}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Hero block */}
+      <section className="border-b border-ink/15">
+        <div className="mx-auto max-w-4xl px-5 md:px-8 py-10">
+          <SectionLabel>Cast a vote</SectionLabel>
+          <h1 className="mt-3 font-display text-[34px] sm:text-[42px] leading-[1.05] tracking-[-0.018em] text-ink anim-ink text-balance">
+            Spend the credits you care about. The math does the rest.
+          </h1>
+          <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-1 font-serif text-[15px] text-ink-2">
+            <span>
+              <span className="text-ink-3 font-mono text-[11px] uppercase tracking-widest mr-2">Method</span>
+              votes = √credits
+            </span>
+            <span>
+              <span className="text-ink-3 font-mono text-[11px] uppercase tracking-widest mr-2">Tip</span>
+              spreading wins more votes than piling on
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Options list */}
+      <main className="mx-auto max-w-4xl px-5 md:px-8 py-10 pb-24 space-y-4">
+        {event.options?.map((option: any, i: number) => {
+          const credits = allocations[option.id] ?? 0;
+          const votes = quadVotes[option.id] ?? 0;
+          const percentOfPool = totalQuadVotes > 0 ? (votes / totalQuadVotes) * 100 : 0;
+          const allocatedHere = credits > 0;
+
+          return (
+            <SchematicCard
+              key={option.id}
+              accent={allocatedHere}
+              className={cn('p-6 md:p-7 transition-colors')}
+            >
+              <div className="flex items-start gap-4">
+                <NumberMarker n={i + 1} />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display text-[22px] text-ink leading-tight">
+                    {option.title}
+                  </h3>
+                  {option.description && (
+                    <p className="mt-1.5 font-serif text-[14.5px] text-ink-2 leading-snug">
+                      {option.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Math display */}
+                <div className="text-right shrink-0 min-w-[120px]">
+                  <div
+                    className={cn(
+                      'font-display text-[36px] leading-none tabular-nums',
+                      allocatedHere ? 'text-blueprint' : 'text-ink-3'
+                    )}
+                  >
+                    {votes.toFixed(1)}
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or use invite code</span>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-3 mt-1">
+                    votes · √{credits}
                   </div>
                 </div>
               </div>
-            )}
 
-            <form onSubmit={handleCodeSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="code">Invite Code</Label>
-                <Input
-                  id="code"
-                  type="text"
-                  value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value)}
-                  placeholder="Enter your invite code"
-                  className="text-center font-mono"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={!codeInput.trim()}>
-                Verify Code
-              </Button>
-            </form>
+              <hr className="ink-rule" />
 
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">About this event:</h4>
-              <p className="text-sm text-blue-800"><strong>{event.title}</strong></p>
-              {event.description && (
-                <p className="text-sm text-blue-700 mt-1">{event.description}</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const totalCredits = event.creditsPerVoter;
-  const usedCredits = getTotalCredits(allocations);
-  const remainingCredits = totalCredits - usedCredits;
-  const percentUsed = (usedCredits / totalCredits) * 100;
-  const isOverBudget = usedCredits > totalCredits;
-  const canSubmit = usedCredits > 0 && !isOverBudget;
-
-  const quadraticVotes = calculateQuadraticVotes(allocations);
-  const framework = event.decisionFramework;
-  const isBinary = framework.framework_type === 'binary_selection';
-
-  // Keep options in original order to prevent React key confusion
-  const displayOptions = event.options || [];
-
-  return (
-    <>
-      <Navigation eventId={params.id as string} eventTitle={event.title} />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-        {/* Fixed Header */}
-        <div className="sticky top-0 z-10 bg-white border-b shadow-sm">
-        <div className="max-w-4xl mx-auto p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">{event.title}</h1>
-              <p className="text-sm text-gray-600">
-                {isBinary ? 'Select your preferences' : 'Allocate resources'}
-              </p>
-            </div>
-            <Badge variant={isBinary ? 'default' : 'secondary'}>
-              {isBinary ? 'Binary Selection' : 'Proportional'}
-            </Badge>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className={isOverBudget ? 'text-red-600 font-bold' : 'text-gray-700'}>
-                {remainingCredits} credits remaining
-              </span>
-              <span className="text-gray-600">
-                {usedCredits} / {totalCredits} used
-              </span>
-            </div>
-            <Progress 
-              value={percentUsed} 
-              className={isOverBudget ? 'bg-red-100' : ''}
-            />
-            {isOverBudget && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                You've exceeded your credit limit
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Options List */}
-      <div className="max-w-4xl mx-auto p-4 pb-32">
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start gap-2">
-            <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm text-blue-900 font-medium">Quadratic Voting</p>
-              <p className="text-xs text-blue-700 mt-1">
-                The more credits you allocate to an option, the less impact each additional credit has.
-                Formula: votes = √credits. This encourages spreading your support across multiple options.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {displayOptions.map((option: any, optionIndex: number) => {
-            const credits = allocations[option.id] || 0;
-            const votes = quadraticVotes[option.id] || 0;
-            const percentage = usedCredits > 0 ? (votes / Object.values(quadraticVotes).reduce((a, b) => a + b, 0)) * 100 : 0;
-
-            return (
-              <Card key={option.id} className={credits > 0 ? 'ring-2 ring-primary' : ''}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{option.title}</CardTitle>
-                      {option.description && (
-                        <CardDescription className="mt-1">{option.description}</CardDescription>
-                      )}
-                    </div>
-                    <div className="text-right ml-4">
-                      <div className="text-2xl font-bold text-primary">
-                        {votes.toFixed(1)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        votes (√{credits})
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Credits allocated</span>
-                      <span className="font-mono font-bold">{credits}</span>
-                    </div>
-                    
-                    <Slider
-                      key={`slider-${option.id}`}
-                      data-testid={`allocation-${optionIndex}`}
-                      value={[credits]}
-                      onValueChange={(value) => {
-                        // Ensure we're only updating this specific option
-                        const newValue = value[0];
-                        updateAllocation(option.id, newValue);
-                      }}
-                      max={Math.min(100, totalCredits)}
-                      step={1}
-                      className="cursor-pointer"
-                    />
-
-                    {credits > 0 && !isBinary && (
-                      <div className="text-xs text-muted-foreground">
-                        If voting closed now, this would receive{' '}
-                        <span className="font-semibold">
-                          {framework.config.resource_symbol}
-                          {((percentage / 100) * framework.config.total_pool_amount).toFixed(2)}
-                        </span>
-                        {' '}({percentage.toFixed(1)}% of pool)
-                      </div>
+              {/* Slider */}
+              <div className="space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <label
+                    htmlFor={`alloc-${option.id}`}
+                    className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3"
+                  >
+                    Credits allocated
+                  </label>
+                  <span
+                    className={cn(
+                      'font-mono text-[14px] tabular-nums',
+                      allocatedHere ? 'text-blueprint font-semibold' : 'text-ink-3'
                     )}
+                  >
+                    {credits}
+                  </span>
+                </div>
+
+                <Slider
+                  data-testid={`allocation-${i}`}
+                  value={[credits]}
+                  onValueChange={(v) => updateAllocation(option.id, v[0])}
+                  max={Math.min(100, totalCredits)}
+                  step={1}
+                  className="cursor-pointer"
+                />
+
+                {/* Live spend preview */}
+                {allocatedHere && !isBinary && framework?.config?.total_pool_amount && (
+                  <div className="flex items-baseline justify-between font-mono text-[11px] uppercase tracking-widest text-ink-3">
+                    <span>Projected share at deadline</span>
+                    <span className="text-terracotta tabular-nums">
+                      {framework.config.resource_symbol}
+                      {((percentOfPool / 100) * framework.config.total_pool_amount).toFixed(2)}
+                      <span className="text-ink-3 ml-2">
+                        ({percentOfPool.toFixed(1)}% of pool)
+                      </span>
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
+                )}
+              </div>
+            </SchematicCard>
+          );
+        })}
+      </main>
 
-      {/* Fixed Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
-        <div className="max-w-4xl mx-auto p-4">
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={resetAllocations}
-              disabled={usedCredits === 0 || isSubmitting}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Reset
-            </Button>
-            
-            <Button
-              onClick={() => setShowConfirmDialog(true)}
-              disabled={!canSubmit || isSubmitting}
-              className="flex-1 text-lg py-6"
-            >
-              {isSubmitting ? (
-                'Submitting...'
-              ) : (
-                <>
-                  Submit Vote <Check className="ml-2 h-5 w-5" />
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirmation Dialog */}
+      {/* Confirmation dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
+        <DialogContent className="!bg-paper !border-ink/25 !rounded-[4px]">
           <DialogHeader>
-            <DialogTitle>Confirm Your Vote</DialogTitle>
-            <DialogDescription>
-              You're about to submit your vote with the following allocation:
+            <Stamp tone="terracotta" rotate={-3} className="self-start mb-2">
+              Confirm · Final
+            </Stamp>
+            <DialogTitle className="font-display text-2xl text-ink">
+              Submit this ballot?
+            </DialogTitle>
+            <DialogDescription className="font-serif text-[15px] text-ink-2">
+              Here&apos;s what you&apos;re signing your name to:
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="space-y-1 max-h-72 overflow-y-auto -mx-6 px-6">
             {event.options
-              .filter((opt: any) => allocations[opt.id] > 0)
-              .map((opt: any) => (
-                <div key={opt.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                  <span className="font-medium">{opt.title}</span>
-                  <div className="text-right">
-                    <div className="text-sm font-mono">{allocations[opt.id]} credits</div>
-                    <div className="text-xs text-muted-foreground">
-                      = {quadraticVotes[opt.id].toFixed(1)} votes
-                    </div>
-                  </div>
+              .filter((o: any) => allocations[o.id] > 0)
+              .map((o: any) => (
+                <div
+                  key={o.id}
+                  className="flex items-baseline justify-between py-2 border-b border-dashed border-ink/15 last:border-b-0"
+                >
+                  <span className="font-display text-[16px] text-ink truncate pr-3">
+                    {o.title}
+                  </span>
+                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3 tabular-nums whitespace-nowrap">
+                    {allocations[o.id]} cr → {quadVotes[o.id].toFixed(1)} v
+                  </span>
                 </div>
               ))}
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-            <p className="text-blue-900">
-              You used <strong>{usedCredits}</strong> of {totalCredits} credits total.
-              You can edit your vote later if needed.
-            </p>
+          <div className="border border-blueprint/25 bg-blueprint/8 px-3 py-2 font-serif text-[14px] text-ink-2 leading-snug">
+            You spent <strong className="text-ink tabular-nums">{usedCredits}</strong>{' '}
+            of {totalCredits} credits. You can edit and resubmit later.
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit}>
-              Confirm & Submit
-            </Button>
+          <DialogFooter className="gap-3">
+            <button
+              type="button"
+              onClick={() => setShowConfirmDialog(false)}
+              className="btn-paper"
+            >
+              Hold on
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="btn-ink"
+            >
+              Submit ballot
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-    </>
+    </div>
   );
 }
-
