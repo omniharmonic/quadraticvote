@@ -1,7 +1,25 @@
 import 'server-only';
+import { createHash } from 'crypto';
 import { createServiceRoleClient } from '@/lib/supabase';
 
 const supabase = createServiceRoleClient();
+
+/**
+ * Stable identifier for an anonymous voter on a public event. Used both
+ * when writing a new ballot and when looking up an existing one so the
+ * same browser sees the same vote.
+ */
+export function computeAnonInviteCode(
+  eventId: string,
+  ipAddress?: string,
+  userAgent?: string
+): string {
+  const identifier = createHash('sha256')
+    .update(`${ipAddress || 'unknown'}-${userAgent || 'unknown'}-${eventId}`)
+    .digest('hex')
+    .substring(0, 32);
+  return `anon_${identifier}`;
+}
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
 import type { Vote } from '@/lib/types';
 
@@ -37,13 +55,11 @@ export class VoteService {
     // 5. Handle anonymous voting for public events
     let finalInviteCode = inviteCode;
     if (invite.isVirtual && inviteCode === 'anonymous') {
-      // Generate a unique identifier for anonymous voters based on IP + User Agent
-      const crypto = require('crypto');
-      const identifier = crypto.createHash('sha256')
-        .update(`${metadata?.ipAddress || 'unknown'}-${metadata?.userAgent || 'unknown'}-${eventId}`)
-        .digest('hex')
-        .substring(0, 32);
-      finalInviteCode = `anon_${identifier}`;
+      finalInviteCode = computeAnonInviteCode(
+        eventId,
+        metadata?.ipAddress,
+        metadata?.userAgent
+      );
     }
 
     // 6. Insert or update vote.

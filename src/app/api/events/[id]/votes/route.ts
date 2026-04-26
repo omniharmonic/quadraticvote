@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
-import { voteService } from '@/lib/services/vote.service';
+import { voteService, computeAnonInviteCode } from '@/lib/services/vote.service';
 import { submitVoteSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
@@ -107,7 +107,19 @@ export async function GET(
       );
     }
 
-    const vote = await voteService.getVoteByCode(params.id, code);
+    // For anonymous voters, resolve to the same IP+UA-derived hash that
+    // submitVote uses when writing — otherwise a returning voter never
+    // sees their existing ballot.
+    const lookupCode =
+      code === 'anonymous'
+        ? computeAnonInviteCode(
+            params.id,
+            request.headers.get('x-forwarded-for') || 'unknown',
+            request.headers.get('user-agent') || undefined
+          )
+        : code;
+
+    const vote = await voteService.getVoteByCode(params.id, lookupCode);
 
     return NextResponse.json({
       success: true,
