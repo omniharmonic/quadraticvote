@@ -16,6 +16,9 @@ export interface ProportionalDistributionConfig {
   minimum_allocation_enabled?: boolean;
   minimum_allocation_percentage?: number;
   decimal_places?: number;
+  payout_token_type?: 'native' | 'erc20';
+  payout_token_address?: string;
+  payout_chain_id?: number;
 }
 
 export type DecisionFramework = {

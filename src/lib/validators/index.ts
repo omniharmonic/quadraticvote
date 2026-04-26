@@ -15,7 +15,12 @@ export const proportionalDistributionConfigSchema = z.object({
   total_pool_amount: z.number().positive(),
   minimum_allocation_enabled: z.boolean().optional(),
   minimum_allocation_percentage: z.number().min(0).max(100).optional(),
-  decimal_places: z.number().int().min(0).max(8).optional(),
+  decimal_places: z.number().int().min(0).max(18).optional(),
+  payout_token_type: z.enum(['native', 'erc20']).optional(),
+  payout_token_address: z.string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, 'Must be a 0x-prefixed 20-byte address')
+    .optional(),
+  payout_chain_id: z.number().int().positive().optional(),
 });
 
 export const decisionFrameworkSchema = z.discriminatedUnion('framework_type', [

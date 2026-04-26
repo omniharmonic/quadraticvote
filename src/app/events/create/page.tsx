@@ -40,6 +40,11 @@ interface EventFormData {
   resourceName?: string;
   resourceSymbol?: string;
   totalPoolAmount?: number;
+  // Optional onchain payout (Gnosis Safe Airdrop CSV export). Off by default.
+  payoutEnabled?: boolean;
+  payoutTokenType?: 'native' | 'erc20';
+  payoutTokenAddress?: string;
+  payoutChainId?: number;
   creditsPerVoter: number;
   options: Array<{ title: string; description: string }>;
   proposalConfig?: {
@@ -188,6 +193,17 @@ export default function CreateEventPage() {
               resource_name: formData.resourceName!,
               resource_symbol: formData.resourceSymbol!,
               total_pool_amount: formData.totalPoolAmount!,
+              ...(formData.payoutEnabled
+                ? {
+                    payout_token_type: formData.payoutTokenType ?? 'native',
+                    ...(formData.payoutTokenType === 'erc20' && formData.payoutTokenAddress
+                      ? { payout_token_address: formData.payoutTokenAddress }
+                      : {}),
+                    ...(formData.payoutChainId
+                      ? { payout_chain_id: formData.payoutChainId }
+                      : {}),
+                  }
+                : {}),
             },
           };
 
@@ -712,6 +728,105 @@ export default function CreateEventPage() {
                       This amount will be distributed proportionally across options
                     </p>
                   </div>
+
+                  {/* Advanced — onchain payout (Gnosis Safe). Hidden by default. */}
+                  <details className="group rounded-md border border-ink/15 bg-paper/50">
+                    <summary className="cursor-pointer list-none px-4 py-3 font-mono text-[11px] uppercase tracking-widest text-ink-3 hover:text-ink select-none flex items-center justify-between">
+                      <span>Advanced · onchain payout (Gnosis Safe)</span>
+                      <span className="text-ink-3 group-open:rotate-90 transition-transform">›</span>
+                    </summary>
+                    <div className="px-4 pb-4 pt-2 space-y-4 border-t border-ink/10">
+                      <p className="text-sm text-gray-500">
+                        Enable a Safe Airdrop CSV export on the results page. Only turn this
+                        on if you plan to distribute the pool from a Gnosis Safe using the{' '}
+                        <a
+                          href="https://github.com/bh2smith/safe-airdrop"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline"
+                        >
+                          CSV Airdrop Safe App
+                        </a>
+                        . The CSV is admin-only.
+                      </p>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <Label htmlFor="payoutEnabled" className="cursor-pointer">
+                          Enable Gnosis Safe CSV export
+                        </Label>
+                        <Switch
+                          id="payoutEnabled"
+                          checked={!!formData.payoutEnabled}
+                          onCheckedChange={(v) => updateFormData({ payoutEnabled: v })}
+                        />
+                      </div>
+
+                      {formData.payoutEnabled && (
+                        <>
+                          <div className="space-y-2">
+                            <Label htmlFor="payoutTokenType">Payout asset *</Label>
+                            <Select
+                              value={formData.payoutTokenType || 'native'}
+                              onValueChange={(value) =>
+                                updateFormData({ payoutTokenType: value as 'native' | 'erc20' })
+                              }
+                            >
+                              <SelectTrigger id="payoutTokenType">
+                                <SelectValue placeholder="Choose asset type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="native">Native (ETH, xDAI, etc.)</SelectItem>
+                                <SelectItem value="erc20">ERC-20 token</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {formData.payoutTokenType === 'erc20' && (
+                            <div className="space-y-2">
+                              <Label htmlFor="payoutTokenAddress">Token contract address *</Label>
+                              <Input
+                                id="payoutTokenAddress"
+                                placeholder="0x…"
+                                value={formData.payoutTokenAddress || ''}
+                                onChange={(e) =>
+                                  updateFormData({ payoutTokenAddress: e.target.value.trim() })
+                                }
+                              />
+                              <p className="text-sm text-gray-500">
+                                The Safe app reads this token&apos;s decimals automatically.
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            <Label htmlFor="payoutChainId">Chain</Label>
+                            <Select
+                              value={formData.payoutChainId ? String(formData.payoutChainId) : ''}
+                              onValueChange={(value) =>
+                                updateFormData({ payoutChainId: parseInt(value) })
+                              }
+                            >
+                              <SelectTrigger id="payoutChainId">
+                                <SelectValue placeholder="Choose chain (optional)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">Ethereum mainnet (1)</SelectItem>
+                                <SelectItem value="8453">Base (8453)</SelectItem>
+                                <SelectItem value="10">Optimism (10)</SelectItem>
+                                <SelectItem value="42161">Arbitrum One (42161)</SelectItem>
+                                <SelectItem value="137">Polygon (137)</SelectItem>
+                                <SelectItem value="100">Gnosis Chain (100)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-sm text-gray-500">
+                              Used to remind admins which Safe to open the CSV in. The CSV
+                              itself is chain-agnostic.
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </details>
                 </>
               )}
 

@@ -387,6 +387,19 @@ export default function EventSettingsPage() {
             </CardContent>
           </Card>
 
+        </form>
+
+          {/* Onchain Payout (Gnosis Safe) — proportional events only.
+              Saves through its own endpoint, independent of the main form. */}
+          {event.decisionFramework?.framework_type === 'proportional_distribution' && (
+            <PayoutConfigCard
+              eventId={eventId}
+              initialConfig={event.decisionFramework?.config ?? {}}
+              onSaved={fetchEvent}
+            />
+          )}
+
+          <form onSubmit={handleSave} className="space-y-8">
           {/* Actions */}
           <div className="flex justify-between">
             <Button
@@ -417,5 +430,168 @@ export default function EventSettingsPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+/* ────────────────────── PAYOUT CONFIG CARD ────────────────────── */
+function PayoutConfigCard({
+  eventId,
+  initialConfig,
+  onSaved,
+}: {
+  eventId: string;
+  initialConfig: any;
+  onSaved: () => void;
+}) {
+  const [enabled, setEnabled] = useState<boolean>(
+    !!initialConfig?.payout_token_type
+  );
+  const [tokenType, setTokenType] = useState<'native' | 'erc20'>(
+    initialConfig?.payout_token_type === 'erc20' ? 'erc20' : 'native'
+  );
+  const [tokenAddress, setTokenAddress] = useState<string>(
+    initialConfig?.payout_token_address ?? ''
+  );
+  const [chainId, setChainId] = useState<string>(
+    initialConfig?.payout_chain_id ? String(initialConfig.payout_chain_id) : ''
+  );
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await authedFetch(`/api/events/${eventId}/payout-config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled,
+          token_type: enabled ? tokenType : undefined,
+          token_address:
+            enabled && tokenType === 'erc20' ? tokenAddress.trim() : undefined,
+          chain_id: enabled && chainId ? parseInt(chainId) : undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `Save failed (${res.status})`);
+      }
+      toast({
+        title: 'Onchain payout updated',
+        description: enabled
+          ? 'Gnosis Safe CSV export is enabled on this event.'
+          : 'Gnosis Safe CSV export is disabled.',
+      });
+      onSaved();
+    } catch (err) {
+      toast({
+        title: 'Failed to save payout config',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="my-8">
+      <CardHeader>
+        <CardTitle>Onchain payout (Gnosis Safe)</CardTitle>
+        <CardDescription>
+          Optional. When enabled, the results page exposes an admin-only
+          Safe Airdrop CSV export. Receivers come from each option&apos;s
+          linked proposal payout wallet.{' '}
+          <a
+            href="https://github.com/bh2smith/safe-airdrop"
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            CSV Airdrop Safe App docs
+          </a>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="payoutEnabled-settings">Enable Gnosis Safe CSV export</Label>
+            <p className="text-sm text-gray-500">
+              Admin-only download on the results page.
+            </p>
+          </div>
+          <Switch
+            id="payoutEnabled-settings"
+            checked={enabled}
+            onCheckedChange={setEnabled}
+          />
+        </div>
+
+        {enabled && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="payoutTokenType-settings">Payout asset</Label>
+              <Select
+                value={tokenType}
+                onValueChange={(v) => setTokenType(v as 'native' | 'erc20')}
+              >
+                <SelectTrigger id="payoutTokenType-settings">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="native">Native (ETH, xDAI, etc.)</SelectItem>
+                  <SelectItem value="erc20">ERC-20 token</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {tokenType === 'erc20' && (
+              <div className="space-y-2">
+                <Label htmlFor="payoutTokenAddress-settings">Token contract address</Label>
+                <Input
+                  id="payoutTokenAddress-settings"
+                  placeholder="0x…"
+                  value={tokenAddress}
+                  onChange={(e) => setTokenAddress(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="payoutChainId-settings">Chain</Label>
+              <Select
+                value={chainId}
+                onValueChange={setChainId}
+              >
+                <SelectTrigger id="payoutChainId-settings">
+                  <SelectValue placeholder="Choose chain (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Ethereum mainnet (1)</SelectItem>
+                  <SelectItem value="8453">Base (8453)</SelectItem>
+                  <SelectItem value="10">Optimism (10)</SelectItem>
+                  <SelectItem value="42161">Arbitrum One (42161)</SelectItem>
+                  <SelectItem value="137">Polygon (137)</SelectItem>
+                  <SelectItem value="100">Gnosis Chain (100)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500">
+                Reminder for which Safe to open. The CSV itself is chain-agnostic.
+              </p>
+            </div>
+          </>
+        )}
+
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="flex items-center gap-2"
+          >
+            {saving ? 'Saving…' : (<><Save className="w-4 h-4" /> Save payout config</>)}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

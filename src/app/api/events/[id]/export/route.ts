@@ -1,25 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase';
 import { resultService } from '@/lib/services/result.service';
-import { withAuth } from '@/lib/utils/auth-middleware';
+import { requireEventAdmin } from '@/lib/utils/auth-middleware';
 
-// Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/events/[id]/export
- * Export event results as CSV for Gnosis Safe batch transactions
+ *
+ * ?format=standard  — public CSV of results (rank, option, votes, share)
+ * ?format=gnosis    — admin-only CSV in Safe Airdrop format
+ *                     (`token_type,token_address,receiver,amount,id`)
+ *                     See https://github.com/bh2smith/safe-airdrop
+ *
+ * Optional `?token=native` or `?token=0x…` overrides the event-configured
+ * payout token. Useful when an admin wants to export the same proportional
+ * result against a different chain/asset.
  */
-export const GET = withAuth(async (
+export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
-  user
-) => {
+  { params }: { params: { id: string } }
+) {
   try {
     const eventId = params.id;
-    const format = request.nextUrl.searchParams.get('format') || 'gnosis';
+    const format = request.nextUrl.searchParams.get('format') || 'standard';
 
-    // Get event details
     const supabase = createServiceRoleClient();
     const { data: event, error: eventError } = await supabase
       .from('events')
@@ -28,58 +33,84 @@ export const GET = withAuth(async (
       .single();
 
     if (eventError || !event) {
-      return NextResponse.json(
-        { error: 'Event not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    // Get results
     const results = await resultService.getResults(eventId);
 
-    // Get proposals with payout addresses if community proposals
-    let payoutData: any[] = [];
-    if (event.option_mode === 'community_proposals') {
-      const { data: proposals } = await supabase
-        .from('proposals')
-        .select('id, title, payout_wallet, submitter_wallet')
-        .eq('event_id', eventId)
-        .eq('status', 'approved');
-
-      if (proposals) {
-        payoutData = proposals;
-      }
+    if (format === 'standard') {
+      const csv = formatStandardCSV(results, event);
+      return csvResponse(csv, `results-${eventId}.csv`);
     }
-
-    // Format based on decision framework
-    const framework = event.decision_framework?.framework_type;
 
     if (format === 'gnosis') {
-      // Gnosis Safe CSV format: recipient,amount,token_address
-      const csv = formatGnosisCSV(results, payoutData, event);
+      // Gnosis CSV exposes payout wallets — admin-only.
+      const auth = await requireEventAdmin(request, eventId);
+      if (!auth.success) {
+        return NextResponse.json(
+          { error: auth.error || 'Admin access required' },
+          { status: 403 }
+        );
+      }
 
-      return new NextResponse(csv, {
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="gnosis-batch-${eventId}.csv"`,
-        },
-      });
-    } else if (format === 'standard') {
-      // Standard results CSV
-      const csv = formatStandardCSV(results, event);
+      // Resolve payout wallets via options.created_by_proposal_id, which
+      // works for admin_defined, community_proposals, and hybrid modes.
+      const { data: options } = await supabase
+        .from('options')
+        .select('id, title, created_by_proposal_id')
+        .eq('event_id', eventId);
 
-      return new NextResponse(csv, {
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="results-${eventId}.csv"`,
-        },
-      });
-    } else {
-      return NextResponse.json(
-        { error: 'Invalid format. Use ?format=gnosis or ?format=standard' },
-        { status: 400 }
+      const proposalIds = (options ?? [])
+        .map(o => o.created_by_proposal_id)
+        .filter((id): id is string => !!id);
+
+      const payoutByOptionId = new Map<string, string>();
+      if (proposalIds.length > 0) {
+        const { data: proposals } = await supabase
+          .from('proposals')
+          .select('id, payout_wallet')
+          .in('id', proposalIds);
+
+        const walletByProposalId = new Map<string, string>();
+        for (const p of proposals ?? []) {
+          if (p.payout_wallet) walletByProposalId.set(p.id, p.payout_wallet);
+        }
+        for (const o of options ?? []) {
+          const wallet = o.created_by_proposal_id
+            ? walletByProposalId.get(o.created_by_proposal_id)
+            : undefined;
+          if (wallet) payoutByOptionId.set(o.id, wallet);
+        }
+      }
+
+      const tokenOverride = parseTokenOverride(
+        request.nextUrl.searchParams.get('token')
       );
+
+      const { csv, missing } = formatGnosisCSV(
+        results,
+        event,
+        payoutByOptionId,
+        tokenOverride
+      );
+
+      const filename = `safe-airdrop-${eventId}.csv`;
+      const headers: Record<string, string> = {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      };
+      // Surface a warning header so the client can show a toast if some
+      // options have no payout wallet attached.
+      if (missing.length > 0) {
+        headers['X-Export-Missing-Wallets'] = String(missing.length);
+      }
+      return new NextResponse(csv, { headers });
     }
+
+    return NextResponse.json(
+      { error: 'Invalid format. Use ?format=standard or ?format=gnosis' },
+      { status: 400 }
+    );
   } catch (error) {
     console.error('Export error:', error);
     return NextResponse.json(
@@ -87,105 +118,148 @@ export const GET = withAuth(async (
       { status: 500 }
     );
   }
-});
+}
 
-function formatGnosisCSV(results: any, payoutData: any[], event: any): string {
-  const lines: string[] = [];
+/* ──────────────────────────── helpers ──────────────────────────── */
 
-  // Header for Gnosis Safe CSV Airdrop format
-  lines.push('token_type,token_address,receiver,amount');
+type TokenOverride =
+  | { type: 'native' }
+  | { type: 'erc20'; address: string }
+  | null;
 
+function parseTokenOverride(raw: string | null): TokenOverride {
+  if (!raw) return null;
+  if (raw === 'native') return { type: 'native' };
+  if (/^0x[a-fA-F0-9]{40}$/.test(raw)) return { type: 'erc20', address: raw };
+  return null;
+}
+
+function csvResponse(csv: string, filename: string) {
+  return new NextResponse(csv, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  });
+}
+
+function formatGnosisCSV(
+  results: any,
+  event: any,
+  payoutByOptionId: Map<string, string>,
+  tokenOverride: TokenOverride
+): { csv: string; missing: string[] } {
   const framework = event.decision_framework?.framework_type;
-  const frameworkResults = results.results;
+  const config = event.decision_framework?.config ?? {};
 
-  if (framework === 'proportional_distribution' && frameworkResults?.distributions) {
-    // For proportional distribution, calculate amounts based on vote share
-    const totalPool = frameworkResults.total_pool || 0;
+  // Resolve token (override > event config). Native is the chain's gas token.
+  const tokenType: 'native' | 'erc20' =
+    tokenOverride?.type ?? (config.payout_token_type === 'erc20' ? 'erc20' : 'native');
+  const tokenAddress: string =
+    tokenOverride?.type === 'erc20'
+      ? tokenOverride.address
+      : tokenType === 'erc20'
+        ? config.payout_token_address ?? ''
+        : '';
 
-    // Map distributions to payouts
-    frameworkResults.distributions.forEach((distribution: any) => {
-      // Find matching proposal for payout address
-      const proposal = payoutData.find(p =>
-        p.title === distribution.title || p.title === distribution.option_title || p.id === distribution.option_id
-      );
+  // Safe Airdrop App canonical header. The five columns are required even
+  // when `id` is empty for fungibles.
+  const lines: string[] = ['token_type,token_address,receiver,amount,id'];
+  const missing: string[] = [];
 
-      if (proposal && proposal.payout_wallet) {
-        const amount = distribution.allocation_amount || distribution.amount || 0;
-        if (amount > 0) {
-          // Format: erc20,token_address,receiver,amount
-          // Using placeholder token address - should be configured per event
-          lines.push(`erc20,0x0000000000000000000000000000000000000000,${proposal.payout_wallet},${amount.toFixed(2)}`);
-        }
+  const decimals = clamp(
+    Number.isFinite(config.decimal_places) ? config.decimal_places : 6,
+    0,
+    18
+  );
+
+  if (framework === 'proportional_distribution' && results.results?.distributions) {
+    for (const d of results.results.distributions) {
+      const amount = Number(d.allocation_amount ?? 0);
+      if (!(amount > 0)) continue;
+
+      const wallet = payoutByOptionId.get(d.option_id);
+      if (!wallet) {
+        missing.push(d.title ?? d.option_id);
+        continue;
       }
-    });
-  } else if (framework === 'binary_selection' && frameworkResults?.selected_options) {
-    // For binary selection, only selected options get payout
-    const selectedOptions = frameworkResults.selected_options || [];
-    const amountPerWinner = event.decision_framework?.config?.amount_per_winner || 1000; // Default amount if not specified
 
-    selectedOptions.forEach((option: any) => {
-      const proposal = payoutData.find(p =>
-        p.title === option.title || p.id === option.option_id
-      );
-
-      if (proposal && proposal.payout_wallet) {
-        lines.push(`erc20,0x0000000000000000000000000000000000000000,${proposal.payout_wallet},${amountPerWinner}`);
-      }
-    });
+      lines.push(formatRow(tokenType, tokenAddress, wallet, amount, decimals));
+    }
   }
 
-  return lines.join('\n');
+  return { csv: lines.join('\n') + '\n', missing };
+}
+
+function formatRow(
+  tokenType: 'native' | 'erc20',
+  tokenAddress: string,
+  receiver: string,
+  amount: number,
+  decimals: number
+): string {
+  const formatted = trimTrailingZeros(amount.toFixed(decimals));
+  // For `native`, token_address is intentionally empty per Safe Airdrop spec.
+  const addr = tokenType === 'native' ? '' : tokenAddress;
+  return `${tokenType},${addr},${csvCell(receiver)},${formatted},`;
+}
+
+function csvCell(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function trimTrailingZeros(s: string): string {
+  if (!s.includes('.')) return s;
+  return s.replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
 }
 
 function formatStandardCSV(results: any, event: any): string {
   const lines: string[] = [];
-  const frameworkResults = results.results;
+  const fr = results.results;
   const framework = results.framework_type;
 
-  // Header
   lines.push('rank,option,votes,credits,percentage,status');
 
-  // Handle different framework types
-  if (framework === 'binary_selection' && frameworkResults?.selected_options) {
-    // Combine selected and not_selected options
-    const allOptions = [
-      ...frameworkResults.selected_options.map((o: any) => ({ ...o, selected: true })),
-      ...frameworkResults.not_selected_options.map((o: any) => ({ ...o, selected: false }))
+  if (framework === 'binary_selection' && fr?.selected_options) {
+    const all = [
+      ...fr.selected_options.map((o: any) => ({ ...o, selected: true })),
+      ...fr.not_selected_options.map((o: any) => ({ ...o, selected: false })),
     ];
-
-    // Sort by credits
-    allOptions.sort((a, b) => b.total_credits - a.total_credits);
-
-    allOptions.forEach((option: any, index: number) => {
+    all.sort((a, b) => (b.total_credits ?? 0) - (a.total_credits ?? 0));
+    all.forEach((opt: any, i: number) => {
       lines.push([
-        index + 1,
-        `"${option.title}"`,
-        option.total_votes,
-        option.total_credits,
-        `${option.percentage.toFixed(2)}%`,
-        option.selected ? 'selected' : 'not_selected'
+        i + 1,
+        csvCell(opt.title ?? ''),
+        opt.votes ?? 0,
+        opt.total_credits ?? 0,
+        `${(opt.percentage ?? 0).toFixed(2)}%`,
+        opt.selected ? 'selected' : 'not_selected',
       ].join(','));
     });
-  } else if (framework === 'proportional_distribution' && frameworkResults?.distributions) {
-    frameworkResults.distributions.forEach((dist: any, index: number) => {
+  } else if (framework === 'proportional_distribution' && fr?.distributions) {
+    fr.distributions.forEach((d: any, i: number) => {
       lines.push([
-        index + 1,
-        `"${dist.option_title}"`,
-        dist.total_votes,
-        dist.total_credits,
-        `${dist.percentage.toFixed(2)}%`,
-        `${dist.amount.toFixed(2)} ${frameworkResults.resource_symbol}`
+        i + 1,
+        csvCell(d.title ?? ''),
+        (d.votes ?? 0).toFixed(2),
+        '',
+        `${(d.allocation_percentage ?? 0).toFixed(2)}%`,
+        `${(d.allocation_amount ?? 0).toFixed(2)} ${fr.resource_symbol ?? ''}`.trim(),
       ].join(','));
     });
   }
 
-  // Add summary
   lines.push('');
   lines.push('Summary');
-  lines.push(`Total Voters,${results.participation?.total_voters || 0}`);
-  lines.push(`Total Credits Allocated,${results.participation?.total_credits_allocated || 0}`);
-  lines.push(`Framework Type,${framework}`);
-  lines.push(`Event Status,${results.participation?.is_final ? 'Final' : 'Ongoing'}`);
+  lines.push(`Total voters,${results.participation?.total_voters ?? 0}`);
+  lines.push(`Total credits allocated,${results.participation?.total_credits_allocated ?? 0}`);
+  lines.push(`Framework,${framework}`);
+  lines.push(`Status,${results.participation?.is_final ? 'final' : 'ongoing'}`);
+  lines.push(`Event,${csvCell(event.title ?? '')}`);
 
-  return lines.join('\n');
+  return lines.join('\n') + '\n';
 }

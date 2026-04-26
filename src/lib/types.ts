@@ -19,6 +19,12 @@ export interface ProportionalDistributionConfig {
   minimum_allocation_enabled?: boolean;
   minimum_allocation_percentage?: number;
   decimal_places?: number;
+  // Optional onchain payout config — when set, the results page shows a
+  // Gnosis Safe Airdrop CSV export. `payout_token_type === 'native'` means
+  // the chain's native asset (ETH, xDAI, etc.) and ignores the address.
+  payout_token_type?: 'native' | 'erc20';
+  payout_token_address?: string;
+  payout_chain_id?: number;
 }
 
 export type DecisionFramework =

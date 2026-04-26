@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navigation from '@/components/layout/navigation';
+import { authedFetch } from '@/lib/utils/authed-fetch';
+import { toast } from '@/hooks/use-toast';
 import {
   GraphPaper,
   SectionLabel,
@@ -150,24 +152,12 @@ export default function ResultsPage() {
 
         {/* Export */}
         {isClosed && (
-          <div className="mt-10 flex flex-wrap gap-3">
-            <a
-              href={`/api/events/${params.id}/export?format=standard`}
-              className="btn-paper"
-              target="_blank"
-              rel="noreferrer"
-            >
-              ↓ CSV · standard
-            </a>
-            <a
-              href={`/api/events/${params.id}/export?format=gnosis`}
-              className="btn-paper"
-              target="_blank"
-              rel="noreferrer"
-            >
-              ↓ CSV · Gnosis Safe airdrop
-            </a>
-          </div>
+          <ExportPanel
+            eventId={params.id as string}
+            eventTitle={event.title}
+            payoutTokenType={framework?.config?.payout_token_type}
+            payoutChainId={framework?.config?.payout_chain_id}
+          />
         )}
       </section>
     </div>
@@ -440,6 +430,105 @@ function ParticipationChart({ data }: { data: any[] }) {
       </p>
     </div>
   );
+}
+
+/* ────────────────────── EXPORT PANEL ────────────────────── */
+function ExportPanel({
+  eventId,
+  eventTitle,
+  payoutTokenType,
+  payoutChainId,
+}: {
+  eventId: string;
+  eventTitle: string;
+  payoutTokenType?: 'native' | 'erc20';
+  payoutChainId?: number;
+}) {
+  const [busy, setBusy] = useState(false);
+  const showGnosis = payoutTokenType === 'native' || payoutTokenType === 'erc20';
+
+  const filename = (kind: 'standard' | 'gnosis') => {
+    const slug = (eventTitle || 'event')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 60) || eventId;
+    return kind === 'gnosis' ? `safe-airdrop-${slug}.csv` : `results-${slug}.csv`;
+  };
+
+  const downloadGnosis = async () => {
+    setBusy(true);
+    try {
+      const res = await authedFetch(
+        `/api/events/${eventId}/export?format=gnosis`
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg =
+          res.status === 401 ? 'Sign in as an event admin to export.'
+          : res.status === 403 ? 'Only event admins can export the Gnosis Safe CSV.'
+          : body.error || `Export failed (${res.status})`;
+        toast({ title: 'Export failed', description: msg, variant: 'destructive' });
+        return;
+      }
+      const missing = parseInt(res.headers.get('x-export-missing-wallets') || '0', 10);
+      const blob = await res.blob();
+      triggerDownload(blob, filename('gnosis'));
+      if (missing > 0) {
+        toast({
+          title: 'Some options had no payout wallet',
+          description: `${missing} option${missing === 1 ? '' : 's'} skipped — add a payout_wallet to those proposals before distributing.`,
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Export failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-10 flex flex-wrap items-center gap-3">
+      <a
+        href={`/api/events/${eventId}/export?format=standard`}
+        download={filename('standard')}
+        className="btn-paper"
+      >
+        ↓ CSV · standard
+      </a>
+      {showGnosis && (
+        <>
+          <button
+            type="button"
+            onClick={downloadGnosis}
+            disabled={busy}
+            className="btn-paper disabled:opacity-50"
+          >
+            {busy ? 'Preparing…' : '↓ CSV · Gnosis Safe airdrop'}
+          </button>
+          <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+            {payoutTokenType === 'native' ? 'Native asset' : 'ERC-20'}
+            {payoutChainId ? ` · chain ${payoutChainId}` : ''}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function Spec({ label, children }: { label: string; children: React.ReactNode }) {
