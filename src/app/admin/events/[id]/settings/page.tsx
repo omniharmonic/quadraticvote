@@ -24,19 +24,18 @@ export default function EventSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Form state
+  // Form state — only fields backed by real columns. Other "voting"
+  // toggles (allowVoteChanges, maxVotesPerUser, etc.) were removed because
+  // the schema has no columns for them and saves were silently dropped.
   const [settings, setSettings] = useState({
     title: '',
     description: '',
-    visibility: 'public',
+    visibility: 'public' as 'public' | 'private' | 'unlisted',
     startTime: '',
     endTime: '',
     creditsPerVoter: 100,
-    allowLateSubmissions: false,
-    requireEmailVerification: true,
-    showResultsLive: false,
-    allowVoteChanges: true,
-    maxVotesPerUser: 1,
+    showResultsDuringVoting: false,
+    showResultsAfterClose: true,
   });
 
   useEffect(() => {
@@ -57,11 +56,8 @@ export default function EventSettingsPage() {
           startTime: data.event.startTime ? new Date(data.event.startTime).toISOString().slice(0, 16) : '',
           endTime: data.event.endTime ? new Date(data.event.endTime).toISOString().slice(0, 16) : '',
           creditsPerVoter: data.event.creditsPerVoter || 100,
-          allowLateSubmissions: data.event.allowLateSubmissions || false,
-          requireEmailVerification: data.event.requireEmailVerification !== false,
-          showResultsLive: data.event.showResultsLive || false,
-          allowVoteChanges: data.event.allowVoteChanges !== false,
-          maxVotesPerUser: data.event.maxVotesPerUser || 1,
+          showResultsDuringVoting: !!data.event.showResultsDuringVoting,
+          showResultsAfterClose: data.event.showResultsAfterClose !== false,
         });
       } else {
         toast({
@@ -230,7 +226,7 @@ export default function EventSettingsPage() {
                   <Label htmlFor="visibility">Visibility</Label>
                   <Select
                     value={settings.visibility}
-                    onValueChange={(value) => setSettings({ ...settings, visibility: value })}
+                    onValueChange={(value) => setSettings({ ...settings, visibility: value as 'public' | 'private' | 'unlisted' })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -301,86 +297,44 @@ export default function EventSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="creditsPerVoter">Credits Per Voter</Label>
-                  <Input
-                    id="creditsPerVoter"
-                    type="number"
-                    min="10"
-                    max="1000"
-                    value={settings.creditsPerVoter}
-                    onChange={(e) => setSettings({ ...settings, creditsPerVoter: parseInt(e.target.value) })}
-                    required
-                  />
-                  <p className="text-sm text-gray-500">
-                    How many credits each voter gets to allocate
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="maxVotesPerUser">Max Votes Per User</Label>
-                  <Input
-                    id="maxVotesPerUser"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={settings.maxVotesPerUser}
-                    onChange={(e) => setSettings({ ...settings, maxVotesPerUser: parseInt(e.target.value) })}
-                    required
-                  />
-                  <p className="text-sm text-gray-500">
-                    Maximum number of times a user can vote
-                  </p>
-                </div>
+              <div className="space-y-2 max-w-xs">
+                <Label htmlFor="creditsPerVoter">Credits Per Voter</Label>
+                <Input
+                  id="creditsPerVoter"
+                  type="number"
+                  min="10"
+                  max="1000"
+                  value={settings.creditsPerVoter}
+                  onChange={(e) => setSettings({ ...settings, creditsPerVoter: parseInt(e.target.value) })}
+                  required
+                />
+                <p className="text-sm text-gray-500">
+                  How many credits each voter gets to allocate
+                </p>
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="allowVoteChanges">Allow Vote Changes</Label>
-                    <p className="text-sm text-gray-500">Let voters modify their votes after submission</p>
-                  </div>
-                  <Switch
-                    id="allowVoteChanges"
-                    checked={settings.allowVoteChanges}
-                    onCheckedChange={(checked) => setSettings({ ...settings, allowVoteChanges: checked })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="allowLateSubmissions">Allow Late Submissions</Label>
-                    <p className="text-sm text-gray-500">Accept votes after the end time</p>
-                  </div>
-                  <Switch
-                    id="allowLateSubmissions"
-                    checked={settings.allowLateSubmissions}
-                    onCheckedChange={(checked) => setSettings({ ...settings, allowLateSubmissions: checked })}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="showResultsLive">Show Live Results</Label>
+                    <Label htmlFor="showResultsDuringVoting">Show Live Results</Label>
                     <p className="text-sm text-gray-500">Display results in real-time during voting</p>
                   </div>
                   <Switch
-                    id="showResultsLive"
-                    checked={settings.showResultsLive}
-                    onCheckedChange={(checked) => setSettings({ ...settings, showResultsLive: checked })}
+                    id="showResultsDuringVoting"
+                    checked={settings.showResultsDuringVoting}
+                    onCheckedChange={(checked) => setSettings({ ...settings, showResultsDuringVoting: checked })}
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="requireEmailVerification">Require Email Verification</Label>
-                    <p className="text-sm text-gray-500">Voters must verify their email before voting</p>
+                    <Label htmlFor="showResultsAfterClose">Show Results After Close</Label>
+                    <p className="text-sm text-gray-500">Make the results page visible once voting closes</p>
                   </div>
                   <Switch
-                    id="requireEmailVerification"
-                    checked={settings.requireEmailVerification}
-                    onCheckedChange={(checked) => setSettings({ ...settings, requireEmailVerification: checked })}
+                    id="showResultsAfterClose"
+                    checked={settings.showResultsAfterClose}
+                    onCheckedChange={(checked) => setSettings({ ...settings, showResultsAfterClose: checked })}
                   />
                 </div>
               </div>

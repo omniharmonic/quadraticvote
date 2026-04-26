@@ -84,6 +84,19 @@ export const createEventSchema = z.object({
   }).optional(),
 });
 
+// Event Update Schema — only fields backed by real columns.
+export const updateEventSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(5000).nullish(),
+  visibility: z.enum(['public', 'private', 'unlisted']).optional(),
+  // Settings page sends `datetime-local` (no Z); accept both.
+  startTime: z.string().min(1).optional(),
+  endTime: z.string().min(1).optional(),
+  creditsPerVoter: z.number().int().min(10).max(10000).optional(),
+  showResultsDuringVoting: z.boolean().optional(),
+  showResultsAfterClose: z.boolean().optional(),
+}).strict();
+
 // Vote Submission Schema
 export const submitVoteSchema = z.object({
   inviteCode: z.string().min(1),
@@ -126,6 +139,7 @@ export const submitProposalSchema = z.object({
 
 // Export types
 export type CreateEventInput = z.infer<typeof createEventSchema>;
+export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type SubmitVoteInput = z.infer<typeof submitVoteSchema>;
 export type SubmitProposalInput = z.infer<typeof submitProposalSchema>;
 

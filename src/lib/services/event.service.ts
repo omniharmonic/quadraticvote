@@ -195,6 +195,60 @@ export class EventService {
   }
 
   /**
+   * Update an existing event. Only the fields backed by real columns are
+   * accepted — see `updateEventSchema` in validators.
+   */
+  async updateEvent(
+    eventId: string,
+    patch: {
+      title?: string;
+      description?: string | null;
+      visibility?: 'public' | 'private' | 'unlisted';
+      startTime?: string;
+      endTime?: string;
+      creditsPerVoter?: number;
+      showResultsDuringVoting?: boolean;
+      showResultsAfterClose?: boolean;
+    }
+  ): Promise<Event> {
+    const supabase = createServiceRoleClient();
+
+    const update: Record<string, any> = {};
+    if (patch.title !== undefined) update.title = patch.title;
+    if (patch.description !== undefined) update.description = patch.description;
+    if (patch.visibility !== undefined) update.visibility = patch.visibility;
+    if (patch.startTime !== undefined) update.start_time = new Date(patch.startTime).toISOString();
+    if (patch.endTime !== undefined) update.end_time = new Date(patch.endTime).toISOString();
+    if (patch.creditsPerVoter !== undefined) update.credits_per_voter = patch.creditsPerVoter;
+    if (patch.showResultsDuringVoting !== undefined)
+      update.show_results_during_voting = patch.showResultsDuringVoting;
+    if (patch.showResultsAfterClose !== undefined)
+      update.show_results_after_close = patch.showResultsAfterClose;
+
+    if (Object.keys(update).length === 0) {
+      const existing = await this.getEventById(eventId);
+      if (!existing) throw new Error('Event not found');
+      return existing;
+    }
+
+    if (update.start_time && update.end_time && new Date(update.start_time) >= new Date(update.end_time)) {
+      throw new Error('end_time must be after start_time');
+    }
+
+    const { data: row, error } = await supabase
+      .from('events')
+      .update(update)
+      .eq('id', eventId)
+      .select()
+      .single();
+
+    if (error || !row) {
+      throw new Error(`Failed to update event: ${error?.message ?? 'unknown error'}`);
+    }
+    return mapDbEventToEvent(row) as Event;
+  }
+
+  /**
    * Get all active public events.
    */
   async getActiveEvents(): Promise<Event[]> {

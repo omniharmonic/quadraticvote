@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { eventService } from '@/lib/services/event.service';
+import { updateEventSchema } from '@/lib/validators/index';
+import { withEventAdmin, withEventOwner } from '@/lib/utils/auth-middleware';
+import { createServiceRoleClient } from '@/lib/supabase';
 
-// Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
 
-import { eventService } from '@/lib/services/event.service';
-
 /**
- * GET /api/events/:id
- * Get event details with options
+ * GET /api/events/:id — public, returns event with options.
  */
 export async function GET(
   request: NextRequest,
@@ -15,21 +15,12 @@ export async function GET(
 ) {
   try {
     const event = await eventService.getEventById(params.id);
-
     if (!event) {
-      return NextResponse.json(
-        { error: 'Event not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
-
-    return NextResponse.json({
-      success: true,
-      event,
-    });
+    return NextResponse.json({ success: true, event });
   } catch (error) {
     console.error('Event fetch error:', error);
-    
     return NextResponse.json(
       {
         error: 'Failed to fetch event',
@@ -40,3 +31,57 @@ export async function GET(
   }
 }
 
+/**
+ * PATCH /api/events/:id — admin-only. Updates fields backed by real
+ * columns (see updateEventSchema). Unknown fields are rejected.
+ */
+export const PATCH = withEventAdmin(async (
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) => {
+  try {
+    const body = await request.json();
+    const parsed = updateEventSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid event update', details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+    const event = await eventService.updateEvent(params.id, parsed.data);
+    return NextResponse.json({ success: true, event });
+  } catch (error) {
+    console.error('Event update error:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const notFound = /not found/i.test(message);
+    return NextResponse.json(
+      { error: notFound ? 'Event not found' : 'Failed to update event', message },
+      { status: notFound ? 404 : 500 }
+    );
+  }
+});
+
+/**
+ * DELETE /api/events/:id — owner-only. Soft-delete via deleted_at.
+ */
+export const DELETE = withEventOwner(async (
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) => {
+  try {
+    const supabase = createServiceRoleClient();
+    const { error } = await supabase
+      .from('events')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', params.id);
+
+    if (error) {
+      console.error('Event delete error:', error);
+      return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Event delete error:', error);
+    return NextResponse.json({ error: 'Failed to delete event' }, { status: 500 });
+  }
+});
