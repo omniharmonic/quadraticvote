@@ -20,6 +20,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import Navigation from '@/components/layout/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Proposal {
   id: string;
@@ -42,6 +43,7 @@ interface Proposal {
 
 export default function AdminProposalsPage() {
   const router = useRouter();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [filteredProposals, setFilteredProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,8 +54,12 @@ export default function AdminProposalsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProposals();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/auth/login?redirect=/admin/proposals');
+      return;
+    }
+    if (isAuthenticated) fetchProposals();
+  }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
     filterProposals();

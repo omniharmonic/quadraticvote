@@ -130,7 +130,7 @@ export default function InviteManagementPage() {
     setIsCreating(true);
 
     try {
-      const response = await authedFetch(`/api/events/${eventId}/invites?code=${adminCode}`, {
+      const response = await authedFetch(`/api/events/${eventId}/invites`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(singleForm),
@@ -185,7 +185,7 @@ export default function InviteManagementPage() {
 
       // Create invites for each email
       const createPromises = emailList.map(email =>
-        authedFetch(`/api/events/${eventId}/invites?code=${adminCode}`, {
+        authedFetch(`/api/events/${eventId}/invites`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
