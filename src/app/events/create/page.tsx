@@ -255,7 +255,7 @@ export default function CreateEventPage() {
   const stepLabels = [
     'Basics',
     'Framework',
-    'Configuration',
+    'Config',
     'Options',
     'Voters',
     'Review',
@@ -281,14 +281,14 @@ export default function CreateEventPage() {
               Six steps. You can edit most settings later.
             </p>
 
-            {/* Step bar */}
-            <div className="mt-7 flex items-center gap-2 max-w-3xl">
+            {/* Step bar — items-start so a wrapping label can't shove its bar up */}
+            <div className="mt-7 flex items-start gap-2 max-w-3xl">
               {stepLabels.map((label, i) => {
                 const n = i + 1;
                 const done = n < currentStep;
                 const active = n === currentStep;
                 return (
-                  <div key={label} className="flex-1">
+                  <div key={label} className="flex-1 min-w-0">
                     <div
                       className={
                         'h-1.5 ' +
@@ -301,7 +301,7 @@ export default function CreateEventPage() {
                     />
                     <div
                       className={
-                        'mt-1.5 font-mono text-[10.5px] uppercase tracking-widest ' +
+                        'mt-1.5 font-mono text-[10.5px] uppercase tracking-widest truncate ' +
                         (active
                           ? 'text-ink'
                           : done
