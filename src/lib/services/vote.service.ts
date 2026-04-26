@@ -46,17 +46,27 @@ export class VoteService {
       finalInviteCode = `anon_${identifier}`;
     }
 
-    // 6. Insert or update vote (simplified for immediate deployment)
+    // 6. Insert or update vote.
+    //
+    // The votes table has a UNIQUE (event_id, invite_code) constraint to
+    // enforce one ballot per voter. We must tell supabase-js to use that
+    // constraint as the conflict target — without `onConflict` it falls
+    // back to the primary key and a re-submitted ballot trips the unique
+    // and 500s. This is the supported "edit your vote" path.
     const { data: vote, error: voteError } = await supabase
       .from('votes')
-      .upsert({
-        event_id: eventId,
-        invite_code: finalInviteCode,
-        allocations: allocations,
-        total_credits_used: totalCredits,
-        ip_address: metadata?.ipAddress,
-        user_agent: metadata?.userAgent,
-      })
+      .upsert(
+        {
+          event_id: eventId,
+          invite_code: finalInviteCode,
+          allocations: allocations,
+          total_credits_used: totalCredits,
+          ip_address: metadata?.ipAddress,
+          user_agent: metadata?.userAgent,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'event_id,invite_code' }
+      )
       .select()
       .single();
 
