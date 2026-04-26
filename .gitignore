@@ -66,3 +66,4 @@ drizzle/
 /test-results/
 /.playwright-mcp/
 
+/qv-*.png
