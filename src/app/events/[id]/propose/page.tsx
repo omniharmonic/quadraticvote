@@ -107,6 +107,17 @@ export default function ProposalSubmissionPage() {
   const acceptsProposals =
     event.optionMode === 'community_proposals' || event.optionMode === 'hybrid';
 
+  // If proposals are invite-only and no code is on the URL, prompt for it
+  // up-front instead of letting the form fail on submit. The invite-code
+  // gate mirrors the vote page's UX so voters and proposers see the same
+  // pattern across the site.
+  const accessControl =
+    event.proposalConfig?.access_control || event.proposalConfig?.accessControl;
+  const isInviteOnly = accessControl === 'invite_only';
+  if (acceptsProposals && isInviteOnly && !inviteCode) {
+    return <InviteCodeGate event={event} eventId={eventId} />;
+  }
+
   if (submitted) {
     return (
       <div className="min-h-screen bg-paper text-ink">
@@ -310,6 +321,85 @@ export default function ProposalSubmissionPage() {
           </div>
         </form>
       </main>
+    </div>
+  );
+}
+
+/* ─────────── Invite-code gate for invite_only proposal events ─────────── */
+
+function InviteCodeGate({ event, eventId }: { event: any; eventId: string }) {
+  const [code, setCode] = useState('');
+  const start = event.startTime ? new Date(event.startTime) : null;
+  const end = event.endTime ? new Date(event.endTime) : null;
+  const fmt = (d: Date) =>
+    new Intl.DateTimeFormat('en-US', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    }).format(d);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    // Forward the code as ?code= so the same page reloads with the gate
+    // resolved. Validation happens server-side on submit; a bogus code
+    // surfaces a clean "Invalid invite code" toast there.
+    window.location.href = `/events/${eventId}/propose?code=${encodeURIComponent(trimmed)}`;
+  };
+
+  return (
+    <div className="min-h-screen bg-paper relative">
+      <Navigation eventTitle={event.title} />
+      <GraphPaper aria-hidden className="absolute inset-0 opacity-40 pointer-events-none" />
+      <div className="relative mx-auto max-w-md px-5 md:px-8 py-16">
+        <SectionLabel>Invite required</SectionLabel>
+        <h1 className="mt-3 font-display text-4xl text-ink leading-tight text-balance">
+          This event takes proposals by invite only.
+        </h1>
+        <p className="mt-3 font-serif text-[16px] text-ink-2 leading-snug">
+          Enter the code from the email the organizer sent you. We&apos;ll
+          remember it for the rest of the submission.
+        </p>
+
+        <SchematicCard accent className="mt-8 p-6">
+          <div className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 mb-3">
+            Event
+          </div>
+          <h2 className="font-display text-xl text-ink leading-tight">{event.title}</h2>
+          {event.description && (
+            <p className="mt-1.5 font-serif text-[14px] text-ink-2 leading-snug">
+              {event.description}
+            </p>
+          )}
+          {start && end && (
+            <div className="mt-3 font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+              {fmt(start)} → {fmt(end)}
+            </div>
+          )}
+        </SchematicCard>
+
+        <form onSubmit={submit} className="mt-6 space-y-3">
+          <label className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 block">
+            Invite code
+          </label>
+          <input
+            type="text"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="••••-••••-••••"
+            className="field w-full text-center font-mono tracking-widest"
+          />
+          <button type="submit" disabled={!code.trim()} className="btn-ink w-full">
+            Continue →
+          </button>
+        </form>
+
+        <Link
+          href={`/events/${eventId}`}
+          className="block mt-6 text-center font-mono text-[11px] uppercase tracking-widest text-ink-3 hover:text-ink"
+        >
+          ← Back to event
+        </Link>
+      </div>
     </div>
   );
 }
