@@ -16,8 +16,6 @@ import {
   FileText,
   BarChart3,
   Calendar,
-  Trophy,
-  Sparkles,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -138,46 +136,53 @@ export default function EventManagementPage() {
       <div className="container mx-auto py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Event Management</h1>
-              <p className="text-gray-600 mt-1">Manage all aspects of your voting event</p>
+              <div className="font-mono text-[11px] uppercase tracking-widest text-ink-3">
+                <span className="text-blueprint">§</span> Event management
+              </div>
+              <h1 className="mt-1 font-display text-3xl text-ink leading-tight">
+                Manage your event.
+              </h1>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Badge variant={isBinary ? 'blueprint' : 'terracotta'}>
+                {isBinary ? 'Binary Selection' : 'Proportional Distribution'}
+              </Badge>
               <Badge
-                variant={eventStatus === 'Active' ? 'default' : eventStatus === 'Upcoming' ? 'secondary' : 'outline'}
-                className={eventStatus === 'Active' ? 'bg-green-500' : ''}
+                variant={
+                  eventStatus === 'Active'
+                    ? 'sage'
+                    : eventStatus === 'Upcoming'
+                    ? 'terracotta'
+                    : 'secondary'
+                }
               >
                 {eventStatus}
               </Badge>
-
-              {isBinary ? (
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm text-blue-600">Binary Selection</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm text-purple-600">Proportional Distribution</span>
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border">
-            <h2 className="text-xl font-semibold mb-2">{event.title}</h2>
+          <div className="border border-ink/15 bg-paper-2 px-5 py-4 rounded-[3px]">
+            <div className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 mb-1.5">
+              Event
+            </div>
+            <h2 className="font-display text-2xl text-ink leading-tight">
+              {event.title}
+            </h2>
             {event.description && (
-              <p className="text-gray-600 mb-3">{event.description}</p>
+              <p className="mt-2 font-serif text-[15px] text-ink-2 leading-snug">
+                {event.description}
+              </p>
             )}
-            <div className="flex items-center gap-4 text-sm text-gray-600">
+            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-widest text-ink-3">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                <span>{formatDate(event.startTime)} - {formatDate(event.endTime)}</span>
+                <Calendar className="h-3.5 w-3.5" />
+                <span>{formatDate(event.startTime)} → {formatDate(event.endTime)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
+                <Users className="h-3.5 w-3.5" />
                 <span>{event.creditsPerVoter} credits per voter</span>
               </div>
             </div>

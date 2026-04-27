@@ -39,12 +39,16 @@ export default function ProposalSubmissionPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/events/${eventId}`)
+    // Forward any invite code so private events resolve for their invitees.
+    const url = inviteCode
+      ? `/api/events/${eventId}?code=${encodeURIComponent(inviteCode)}`
+      : `/api/events/${eventId}`;
+    fetch(url)
       .then((r) => r.json())
       .then((d) => !cancelled && setEvent(d?.event ?? null))
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [eventId]);
+  }, [eventId, inviteCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

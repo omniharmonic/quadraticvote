@@ -84,11 +84,13 @@ export function SchematicCard({
   );
 }
 
-/* -------- stamp ( like a rubber stamp on a document ) -------- */
+/* -------- tag ( squared engineering label — formerly "stamp" ) --------
+ * Kept the export name `Stamp` for backwards compatibility, but the
+ * rendering is now a flat, professional tag aligned with `Badge`.
+ * The `rotate` prop is accepted but ignored. */
 
 export function Stamp({
   tone = 'ink',
-  rotate = -1.5,
   children,
   className,
 }: {
@@ -98,18 +100,22 @@ export function Stamp({
   className?: string;
 }) {
   const toneClass = {
-    ink: 'text-ink',
-    sage: 'text-sage',
-    wine: 'text-wine',
-    blueprint: 'text-blueprint',
-    terracotta: 'text-terracotta',
-    gold: 'text-gold',
+    ink: 'border-ink/35 bg-paper-2 text-ink',
+    sage: 'border-sage/40 bg-sage/10 text-sage',
+    wine: 'border-wine/40 bg-wine/10 text-wine',
+    blueprint: 'border-blueprint/40 bg-blueprint/10 text-blueprint',
+    terracotta: 'border-terracotta/40 bg-terracotta/10 text-terracotta',
+    gold: 'border-gold/40 bg-gold/10 text-gold',
   }[tone];
 
   return (
     <span
-      className={cn('stamp', toneClass, className)}
-      style={{ transform: `rotate(${rotate}deg)` }}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-0.5',
+        'font-mono text-[10.5px] uppercase tracking-widest leading-none',
+        toneClass,
+        className
+      )}
     >
       {children}
     </span>

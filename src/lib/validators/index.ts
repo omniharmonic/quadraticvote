@@ -77,10 +77,8 @@ export const createEventSchema = z.object({
   voteSettings: z.object({
     allowVoteChanges: z.boolean().optional(),
     allowLateSubmissions: z.boolean().optional(),
-    showLiveResults: z.boolean().optional(),
     requireEmailVerification: z.boolean().optional(),
     allowAnonymous: z.boolean().optional(),
-    requireModeration: z.boolean().optional(),
   }).optional(),
 });
 
@@ -95,6 +93,15 @@ export const updateEventSchema = z.object({
   creditsPerVoter: z.number().int().min(10).max(10000).optional(),
   showResultsDuringVoting: z.boolean().optional(),
   showResultsAfterClose: z.boolean().optional(),
+  voteSettings: z
+    .object({
+      allowVoteChanges: z.boolean().optional(),
+      allowLateSubmissions: z.boolean().optional(),
+      requireEmailVerification: z.boolean().optional(),
+      allowAnonymous: z.boolean().optional(),
+    })
+    .partial()
+    .optional(),
 }).strict();
 
 // Vote Submission Schema

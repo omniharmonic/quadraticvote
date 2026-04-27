@@ -7,6 +7,45 @@ import type { Event, DecisionFramework } from '@/lib/types';
 
 type DbEventRow = Record<string, any>;
 
+export interface VoteSettings {
+  allowVoteChanges: boolean;
+  allowLateSubmissions: boolean;
+  requireEmailVerification: boolean;
+  allowAnonymous: boolean;
+}
+
+// Defaults must match the SQL DEFAULT on events.vote_settings — they
+// describe the historical pre-toggle behavior and are the source of truth
+// when a row is missing the column or has a partial JSON blob.
+export const DEFAULT_VOTE_SETTINGS: VoteSettings = {
+  allowVoteChanges: true,
+  allowLateSubmissions: false,
+  requireEmailVerification: false,
+  allowAnonymous: true,
+};
+
+function normalizeVoteSettings(raw: any): VoteSettings {
+  const v = raw && typeof raw === 'object' ? raw : {};
+  return {
+    allowVoteChanges:
+      typeof v.allowVoteChanges === 'boolean'
+        ? v.allowVoteChanges
+        : DEFAULT_VOTE_SETTINGS.allowVoteChanges,
+    allowLateSubmissions:
+      typeof v.allowLateSubmissions === 'boolean'
+        ? v.allowLateSubmissions
+        : DEFAULT_VOTE_SETTINGS.allowLateSubmissions,
+    requireEmailVerification:
+      typeof v.requireEmailVerification === 'boolean'
+        ? v.requireEmailVerification
+        : DEFAULT_VOTE_SETTINGS.requireEmailVerification,
+    allowAnonymous:
+      typeof v.allowAnonymous === 'boolean'
+        ? v.allowAnonymous
+        : DEFAULT_VOTE_SETTINGS.allowAnonymous,
+  };
+}
+
 function mapDbEventToEvent(row: DbEventRow): Event & { options?: any[] } {
   const pc = row.proposal_config;
   return {
@@ -42,6 +81,7 @@ function mapDbEventToEvent(row: DbEventRow): Event & { options?: any[] } {
     tokenGating: row.token_gating,
     showResultsDuringVoting: row.show_results_during_voting,
     showResultsAfterClose: row.show_results_after_close,
+    voteSettings: normalizeVoteSettings(row.vote_settings),
     createdBy: row.created_by,
     adminCode: row.admin_code,
     createdAt: row.created_at,
@@ -76,6 +116,7 @@ export class EventService {
       token_gating: input.tokenGating,
       show_results_during_voting: input.showResultsDuringVoting,
       show_results_after_close: input.showResultsAfterClose,
+      vote_settings: normalizeVoteSettings((input as any).voteSettings),
       created_by: userId ?? null,
     };
 
@@ -209,6 +250,7 @@ export class EventService {
       creditsPerVoter?: number;
       showResultsDuringVoting?: boolean;
       showResultsAfterClose?: boolean;
+      voteSettings?: Partial<VoteSettings>;
     }
   ): Promise<Event> {
     const supabase = createServiceRoleClient();
@@ -224,6 +266,19 @@ export class EventService {
       update.show_results_during_voting = patch.showResultsDuringVoting;
     if (patch.showResultsAfterClose !== undefined)
       update.show_results_after_close = patch.showResultsAfterClose;
+    if (patch.voteSettings !== undefined) {
+      // Merge incoming partial against the existing row so a settings page
+      // sending one toggle doesn't blow away the others.
+      const { data: existing } = await supabase
+        .from('events')
+        .select('vote_settings')
+        .eq('id', eventId)
+        .single();
+      update.vote_settings = normalizeVoteSettings({
+        ...(existing?.vote_settings ?? {}),
+        ...patch.voteSettings,
+      });
+    }
 
     if (Object.keys(update).length === 0) {
       const existing = await this.getEventById(eventId);

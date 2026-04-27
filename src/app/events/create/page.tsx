@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, ArrowRight, Check, Sparkles, Target, Settings2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Settings2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import Navigation from '@/components/layout/navigation';
 
@@ -46,6 +46,19 @@ interface EventFormData {
   payoutTokenAddress?: string;
   payoutChainId?: number;
   creditsPerVoter: number;
+  // Display Settings — these map to real DB columns.
+  showResultsDuringVoting: boolean;
+  showResultsAfterClose: boolean;
+  // Runtime toggles persisted as events.vote_settings JSONB.
+  voteSettings: {
+    allowVoteChanges: boolean;
+    allowLateSubmissions: boolean;
+    requireEmailVerification: boolean;
+    allowAnonymous: boolean;
+  };
+  // Proposal moderation toggle — applies only to community/hybrid modes;
+  // persists via proposalConfig.moderationMode.
+  requireModeration: boolean;
   options: Array<{ title: string; description: string }>;
   proposalConfig?: {
     enabled: boolean;
@@ -54,14 +67,6 @@ interface EventFormData {
     moderationMode: 'pre_approval' | 'post_moderation' | 'none';
     accessControl: 'open' | 'invite_only';
     maxProposalsPerUser: number;
-  };
-  voteSettings?: {
-    allowVoteChanges: boolean;
-    allowLateSubmissions: boolean;
-    showLiveResults: boolean;
-    requireEmailVerification: boolean;
-    allowAnonymous: boolean;
-    requireModeration: boolean;
   };
 }
 
@@ -86,21 +91,21 @@ export default function CreateEventPage() {
     framework: null,
     optionMode: null,
     creditsPerVoter: 100,
+    showResultsDuringVoting: false,
+    showResultsAfterClose: true,
+    voteSettings: {
+      allowVoteChanges: true,
+      allowLateSubmissions: false,
+      requireEmailVerification: false,
+      allowAnonymous: true,
+    },
+    requireModeration: false,
     options: [{ title: '', description: '' }],
     proposalConfig: {
       enabled: false,
-      // Default matches requireModeration toggle below (off by default)
       moderationMode: 'none',
       accessControl: 'open',
       maxProposalsPerUser: 3
-    },
-    voteSettings: {
-      allowVoteChanges: false,
-      allowLateSubmissions: false,
-      showLiveResults: false,
-      requireEmailVerification: false,
-      allowAnonymous: true,
-      requireModeration: false
     }
   });
 
@@ -218,10 +223,16 @@ export default function CreateEventPage() {
           endTime: new Date(formData.endTime).toISOString(),
           decisionFramework,
           optionMode: formData.optionMode,
-          proposalConfig: formData.optionMode !== 'admin_defined' ? formData.proposalConfig : undefined,
+          proposalConfig:
+            formData.optionMode !== 'admin_defined' ? formData.proposalConfig : undefined,
           creditsPerVoter: formData.creditsPerVoter,
-          initialOptions: (formData.optionMode === 'admin_defined' || formData.optionMode === 'hybrid') ? formData.options.filter(o => o.title.trim()) : undefined,
+          showResultsDuringVoting: formData.showResultsDuringVoting,
+          showResultsAfterClose: formData.showResultsAfterClose,
           voteSettings: formData.voteSettings,
+          initialOptions:
+            formData.optionMode === 'admin_defined' || formData.optionMode === 'hybrid'
+              ? formData.options.filter(o => o.title.trim())
+              : undefined,
         }),
       });
 
@@ -428,39 +439,43 @@ export default function CreateEventPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
                   onClick={() => updateFormData({ framework: 'binary_selection' })}
-                  className={`relative p-6 border-2 rounded-lg text-left transition-all ${
+                  className={`relative p-6 border rounded-[3px] text-left transition-all ${
                     formData.framework === 'binary_selection'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blueprint bg-blueprint/5'
+                      : 'border-ink/20 hover:border-ink/40'
                   }`}
                 >
-                  <Target className="h-8 w-8 text-blue-600 mb-3" />
-                  <h3 className="text-lg font-semibold mb-2">Binary Selection</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Choose winners from options. Best for competitions, awards, or selecting projects.
+                  <Badge variant="blueprint">Binary Selection</Badge>
+                  <h3 className="mt-3 font-display text-xl text-ink leading-tight">
+                    Pick winners from a set of options.
+                  </h3>
+                  <p className="mt-2 font-serif text-[14.5px] text-ink-2 leading-snug">
+                    Best for competitions, grant rounds, or shortlisting projects. A
+                    selection method (top N, threshold, etc.) decides which options pass.
                   </p>
-                  <Badge variant="secondary">Competitive</Badge>
                   {formData.framework === 'binary_selection' && (
-                    <Check className="absolute top-4 right-4 h-6 w-6 text-blue-600" />
+                    <Check className="absolute top-4 right-4 h-5 w-5 text-blueprint" />
                   )}
                 </button>
 
                 <button
                   onClick={() => updateFormData({ framework: 'proportional_distribution' })}
-                  className={`relative p-6 border-2 rounded-lg text-left transition-all ${
+                  className={`relative p-6 border rounded-[3px] text-left transition-all ${
                     formData.framework === 'proportional_distribution'
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-terracotta bg-terracotta/5'
+                      : 'border-ink/20 hover:border-ink/40'
                   }`}
                 >
-                  <Sparkles className="h-8 w-8 text-purple-600 mb-3" />
-                  <h3 className="text-lg font-semibold mb-2">Proportional Distribution</h3>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Allocate resources proportionally. Best for budgets, grants, or resource allocation.
+                  <Badge variant="terracotta">Proportional Distribution</Badge>
+                  <h3 className="mt-3 font-display text-xl text-ink leading-tight">
+                    Split a pool across the options.
+                  </h3>
+                  <p className="mt-2 font-serif text-[14.5px] text-ink-2 leading-snug">
+                    Best for budgets, treasury allocations, or resource sharing. Each
+                    option receives a share proportional to the votes it earns.
                   </p>
-                  <Badge variant="secondary">Collaborative</Badge>
                   {formData.framework === 'proportional_distribution' && (
-                    <Check className="absolute top-4 right-4 h-6 w-6 text-purple-600" />
+                    <Check className="absolute top-4 right-4 h-5 w-5 text-terracotta" />
                   )}
                 </button>
               </div>
@@ -932,28 +947,29 @@ export default function CreateEventPage() {
                 <Settings2 className="w-5 h-5" />
                 Vote Settings
               </CardTitle>
-              <CardDescription>Configure how voting works for your event</CardDescription>
+              <CardDescription>
+                Fine-tune how voting and results behave. All of these can be
+                changed later from the event settings page.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Allow Vote Changes */}
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
+                <div className="space-y-1 pr-6">
                   <Label htmlFor="allowVoteChanges" className="text-base font-medium">
                     Allow Vote Changes
                   </Label>
                   <p className="text-sm text-gray-600">
-                    Let voters modify their votes after submission
+                    Let voters edit and resubmit their ballot until the event closes.
+                    When off, the first ballot is final.
                   </p>
                 </div>
                 <Switch
                   id="allowVoteChanges"
-                  checked={formData.voteSettings?.allowVoteChanges || false}
+                  checked={formData.voteSettings.allowVoteChanges}
                   onCheckedChange={(checked) =>
                     updateFormData({
-                      voteSettings: {
-                        ...formData.voteSettings!,
-                        allowVoteChanges: checked
-                      }
+                      voteSettings: { ...formData.voteSettings, allowVoteChanges: checked },
                     })
                   }
                 />
@@ -961,23 +977,67 @@ export default function CreateEventPage() {
 
               {/* Allow Late Submissions */}
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
+                <div className="space-y-1 pr-6">
                   <Label htmlFor="allowLateSubmissions" className="text-base font-medium">
                     Allow Late Submissions
                   </Label>
                   <p className="text-sm text-gray-600">
-                    Accept votes after the end time
+                    Accept ballots submitted after the end time. Use this if your
+                    end time is a soft deadline.
                   </p>
                 </div>
                 <Switch
                   id="allowLateSubmissions"
-                  checked={formData.voteSettings?.allowLateSubmissions || false}
+                  checked={formData.voteSettings.allowLateSubmissions}
                   onCheckedChange={(checked) =>
                     updateFormData({
-                      voteSettings: {
-                        ...formData.voteSettings!,
-                        allowLateSubmissions: checked
-                      }
+                      voteSettings: { ...formData.voteSettings, allowLateSubmissions: checked },
+                    })
+                  }
+                />
+              </div>
+
+              {/* Allow Anonymous (only meaningful for public events) */}
+              {formData.visibility === 'public' && (
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1 pr-6">
+                    <Label htmlFor="allowAnonymous" className="text-base font-medium">
+                      Allow Anonymous Voting
+                    </Label>
+                    <p className="text-sm text-gray-600">
+                      Public events only. When off, voters must enter an invite
+                      code instead of voting anonymously.
+                    </p>
+                  </div>
+                  <Switch
+                    id="allowAnonymous"
+                    checked={formData.voteSettings.allowAnonymous}
+                    onCheckedChange={(checked) =>
+                      updateFormData({
+                        voteSettings: { ...formData.voteSettings, allowAnonymous: checked },
+                      })
+                    }
+                  />
+                </div>
+              )}
+
+              {/* Require Email Verification */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-1 pr-6">
+                  <Label htmlFor="requireEmailVerification" className="text-base font-medium">
+                    Require Email Verification
+                  </Label>
+                  <p className="text-sm text-gray-600">
+                    Voters must be signed in with an email address that has been
+                    verified. The strictest setting.
+                  </p>
+                </div>
+                <Switch
+                  id="requireEmailVerification"
+                  checked={formData.voteSettings.requireEmailVerification}
+                  onCheckedChange={(checked) =>
+                    updateFormData({
+                      voteSettings: { ...formData.voteSettings, requireEmailVerification: checked },
                     })
                   }
                 />
@@ -985,72 +1045,38 @@ export default function CreateEventPage() {
 
               {/* Show Live Results */}
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label htmlFor="showLiveResults" className="text-base font-medium">
+                <div className="space-y-1 pr-6">
+                  <Label htmlFor="showResultsDuringVoting" className="text-base font-medium">
                     Show Live Results
                   </Label>
                   <p className="text-sm text-gray-600">
-                    Display results in real-time during voting
+                    Display the results page in real time while voting is open.
                   </p>
                 </div>
                 <Switch
-                  id="showLiveResults"
-                  checked={formData.voteSettings?.showLiveResults || false}
+                  id="showResultsDuringVoting"
+                  checked={formData.showResultsDuringVoting}
                   onCheckedChange={(checked) =>
-                    updateFormData({
-                      voteSettings: {
-                        ...formData.voteSettings!,
-                        showLiveResults: checked
-                      }
-                    })
+                    updateFormData({ showResultsDuringVoting: checked })
                   }
                 />
               </div>
 
-              {/* Require Email Verification */}
+              {/* Show Results After Close */}
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label htmlFor="requireEmailVerification" className="text-base font-medium">
-                    Require Email Verification
+                <div className="space-y-1 pr-6">
+                  <Label htmlFor="showResultsAfterClose" className="text-base font-medium">
+                    Show Results After Close
                   </Label>
                   <p className="text-sm text-gray-600">
-                    Voters must verify their email before voting
+                    Make the results page visible to participants once voting closes.
                   </p>
                 </div>
                 <Switch
-                  id="requireEmailVerification"
-                  checked={formData.voteSettings?.requireEmailVerification || false}
+                  id="showResultsAfterClose"
+                  checked={formData.showResultsAfterClose}
                   onCheckedChange={(checked) =>
-                    updateFormData({
-                      voteSettings: {
-                        ...formData.voteSettings!,
-                        requireEmailVerification: checked
-                      }
-                    })
-                  }
-                />
-              </div>
-
-              {/* Allow Anonymous Participation */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label htmlFor="allowAnonymous" className="text-base font-medium">
-                    Allow Anonymous Participation
-                  </Label>
-                  <p className="text-sm text-gray-600">
-                    Allow voters to participate without invite codes for public events
-                  </p>
-                </div>
-                <Switch
-                  id="allowAnonymous"
-                  checked={formData.voteSettings?.allowAnonymous || false}
-                  onCheckedChange={(checked) =>
-                    updateFormData({
-                      voteSettings: {
-                        ...formData.voteSettings!,
-                        allowAnonymous: checked
-                      }
-                    })
+                    updateFormData({ showResultsAfterClose: checked })
                   }
                 />
               </div>
@@ -1058,23 +1084,21 @@ export default function CreateEventPage() {
               {/* Proposal Moderation (only show for community_proposals or hybrid) */}
               {(formData.optionMode === 'community_proposals' || formData.optionMode === 'hybrid') && (
                 <div className="flex items-center justify-between">
-                  <div className="space-y-1">
+                  <div className="space-y-1 pr-6">
                     <Label htmlFor="requireModeration" className="text-base font-medium">
                       Require Proposal Moderation
                     </Label>
                     <p className="text-sm text-gray-600">
-                      All proposals must be manually approved before voting
+                      All community proposals must be manually approved before they
+                      become voting options.
                     </p>
                   </div>
                   <Switch
                     id="requireModeration"
-                    checked={formData.voteSettings?.requireModeration || false}
+                    checked={formData.requireModeration}
                     onCheckedChange={(checked) =>
                       updateFormData({
-                        voteSettings: {
-                          ...formData.voteSettings!,
-                          requireModeration: checked
-                        },
+                        requireModeration: checked,
                         proposalConfig: {
                           ...formData.proposalConfig!,
                           moderationMode: checked ? 'pre_approval' : 'none'

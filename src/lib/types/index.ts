@@ -49,10 +49,18 @@ export interface Event {
   tokenGating?: any;
   showResultsDuringVoting: boolean;
   showResultsAfterClose: boolean;
+  voteSettings: VoteSettings;
   createdBy?: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
+}
+
+export interface VoteSettings {
+  allowVoteChanges: boolean;
+  allowLateSubmissions: boolean;
+  requireEmailVerification: boolean;
+  allowAnonymous: boolean;
 }
 
 // Option Types

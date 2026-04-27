@@ -55,16 +55,39 @@ export class ProposalService {
 
     if (eventError || !event) throw new Error('Event not found');
     if (!this.areProposalsOpen(event)) throw new Error('Proposal submission is closed');
-    
+
     // 2. Validate submitter authorization if needed (snake_case from DB)
     const proposalConfig = event.proposal_config || event.proposalConfig;
     if ((proposalConfig as any)?.access_control === 'invite_only') {
       if (!input.inviteCode) throw new Error('Invite code required');
       await this.validateSubmitter(event.id, input.submitterEmail, input.inviteCode);
     }
-    
-    // 3. Generate anonymous ID
+
+    // 3. Generate anonymous ID (used both for the row and for per-user limits)
     const anonymousId = hashString(input.submitterEmail);
+
+    // 4. Enforce maxProposalsPerUser, if configured. Rejected and merged
+    // proposals don't count against the limit — only live ones do.
+    const maxPerUser =
+      (proposalConfig as any)?.max_proposals_per_user ??
+      (proposalConfig as any)?.maxProposalsPerUser;
+    if (typeof maxPerUser === 'number' && maxPerUser > 0) {
+      const { count, error: countError } = await supabase
+        .from('proposals')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', input.eventId)
+        .eq('submitter_anonymous_id', anonymousId)
+        .in('status', ['draft', 'submitted', 'pending_approval', 'approved']);
+
+      if (countError) {
+        throw new Error(`Failed to check proposal quota: ${countError.message}`);
+      }
+      if ((count ?? 0) >= maxPerUser) {
+        throw new Error(
+          `You've reached the limit of ${maxPerUser} proposal${maxPerUser === 1 ? '' : 's'} for this event`
+        );
+      }
+    }
     
     // 4. Determine initial status based on moderation mode
     const initialStatus = this.getInitialStatus(proposalConfig);

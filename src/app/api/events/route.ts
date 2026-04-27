@@ -49,10 +49,12 @@ export const POST = withAuth(async (request: NextRequest, context, user) => {
       );
     }
 
-    // Create event with fallback for visibility and proposalConfig
+    // Build the create-event payload. voteSettings is forwarded straight
+    // through to the service, which normalizes it against defaults before
+    // writing to events.vote_settings.
     const eventData = {
       ...validationResult.data,
-      visibility: (validationResult.data as any).visibility || 'public', // Fallback to public if missing
+      visibility: (validationResult.data as any).visibility || 'public',
       proposalConfig: (validationResult.data as any).proposalConfig || body.proposalConfig || (
         validationResult.data.optionMode === 'community_proposals' ? {
           enabled: true,
@@ -62,12 +64,7 @@ export const POST = withAuth(async (request: NextRequest, context, user) => {
           access_control: 'open'
         } : null
       ),
-      // Restore missing fields from original body
       initialOptions: (validationResult.data as any).initialOptions || body.initialOptions,
-      voteSettings: {
-        ...(validationResult.data as any).voteSettings,
-        allowAnonymous: (validationResult.data as any).voteSettings?.allowAnonymous ?? body.voteSettings?.allowAnonymous
-      }
     };
 
     // Look up the actual user record by auth_id to get the correct ID for the foreign key

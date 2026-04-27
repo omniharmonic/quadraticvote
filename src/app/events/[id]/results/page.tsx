@@ -32,17 +32,34 @@ export default function ResultsPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [resultsBlocked, setResultsBlocked] = useState<{ message: string } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
+    // authedFetch on the results endpoint so event admins can bypass the
+    // showResultsDuringVoting / showResultsAfterClose toggles.
     Promise.all([
-      fetch(`/api/events/${params.id}`).then((r) => r.json()),
-      fetch(`/api/events/${params.id}/results`).then((r) => r.json()),
-      fetch(`/api/events/${params.id}/analytics?range=all`).then((r) => r.json()),
+      authedFetch(`/api/events/${params.id}`).then((r) => r.json()),
+      authedFetch(`/api/events/${params.id}/results`).then(async (r) => ({
+        ok: r.ok,
+        body: await r.json(),
+      })),
+      authedFetch(`/api/events/${params.id}/analytics?range=all`).then((r) => r.json()),
     ])
       .then(([e, r, a]) => {
         if (cancelled) return;
         setEvent(e?.event ?? null);
-        setResults(r?.results ?? null);
+        if (r.ok) {
+          setResults(r.body?.results ?? null);
+          setResultsBlocked(null);
+        } else {
+          setResults(null);
+          setResultsBlocked({
+            message:
+              r.body?.error ||
+              'Results are not available for this event right now.',
+          });
+        }
         setAnalytics(a?.analytics ?? null);
       })
       .finally(() => !cancelled && setLoading(false));
@@ -55,6 +72,22 @@ export default function ResultsPage() {
         <Navigation />
         <div className="mx-auto max-w-5xl px-5 md:px-8 py-20 font-mono text-[11px] uppercase tracking-widest text-ink-3">
           Loading results…
+        </div>
+      </div>
+    );
+  }
+
+  if (event && resultsBlocked) {
+    return (
+      <div className="min-h-screen bg-paper">
+        <Navigation eventId={params.id as string} eventTitle={event.title} />
+        <div className="mx-auto max-w-md px-5 md:px-8 py-20 text-center">
+          <Sqrt size="md" className="opacity-30" />
+          <h1 className="mt-4 font-display text-3xl text-ink">Results unavailable.</h1>
+          <p className="mt-2 font-serif text-ink-2">{resultsBlocked.message}</p>
+          <Link href={`/events/${params.id}`} className="btn-paper mt-6 inline-flex">
+            Back to event
+          </Link>
         </div>
       </div>
     );
@@ -105,7 +138,7 @@ export default function ResultsPage() {
                 <Spec label="Credits spent">{totalCredits.toLocaleString()}</Spec>
                 <Spec label="Method">votes = √credits</Spec>
                 {isBinary ? (
-                  <Spec label="Cut rule">
+                  <Spec label="Selection method">
                     {framework.config.threshold_mode === 'top_n' &&
                       `Top ${framework.config.top_n_count}`}
                     {framework.config.threshold_mode === 'percentage' &&

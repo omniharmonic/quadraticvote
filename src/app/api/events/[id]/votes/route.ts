@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic';
 import { voteService, computeAnonInviteCode } from '@/lib/services/vote.service';
 import { submitVoteSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
+import { extractToken } from '@/lib/utils/auth-middleware';
+import { createServiceRoleClient } from '@/lib/supabase';
 
 /**
  * POST /api/events/:id/votes
@@ -51,6 +53,27 @@ export async function POST(
       );
     }
 
+    // Optional auth — only used when an event has requireEmailVerification on.
+    // Voting is otherwise unauthenticated, so a missing/invalid token is fine.
+    let auth: { userId?: string; email?: string; emailVerified?: boolean } | undefined;
+    const token = extractToken(request);
+    if (token) {
+      try {
+        const sb = createServiceRoleClient();
+        const { data, error } = await sb.auth.getUser(token);
+        if (!error && data?.user) {
+          auth = {
+            userId: data.user.id,
+            email: data.user.email ?? undefined,
+            emailVerified: !!data.user.email_confirmed_at,
+          };
+        }
+      } catch {
+        // Treat any auth failure as unauthenticated — vote.service will
+        // reject the submission if the event requires verification.
+      }
+    }
+
     // Submit vote
     const vote = await voteService.submitVote(
       params.id,
@@ -59,6 +82,7 @@ export async function POST(
       {
         ipAddress: ip,
         userAgent: request.headers.get('user-agent') || undefined,
+        auth,
       }
     );
 

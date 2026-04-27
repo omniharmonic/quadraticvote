@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { eventService } from '@/lib/services/event.service';
 import { updateEventSchema } from '@/lib/validators/index';
-import { withEventAdmin, withEventOwner } from '@/lib/utils/auth-middleware';
+import {
+  withEventAdmin,
+  withEventOwner,
+  extractToken,
+} from '@/lib/utils/auth-middleware';
+import { adminService } from '@/lib/services/admin.service';
 import { createServiceRoleClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/events/:id — public, returns event with options.
+ * GET /api/events/:id
+ *
+ * Visibility gates:
+ *  - public:    anyone can fetch.
+ *  - unlisted:  anyone with the URL can fetch (intentional — that's the whole
+ *               point of "unlisted").
+ *  - private:   only event admins or holders of a valid invite code (passed
+ *               via ?code=) can fetch. Everyone else gets a 404 so the
+ *               event's existence isn't leaked.
  */
 export async function GET(
   request: NextRequest,
@@ -18,6 +31,15 @@ export async function GET(
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
+
+    if (event.visibility === 'private') {
+      const allowed = await callerCanAccessPrivateEvent(request, params.id);
+      if (!allowed) {
+        // 404 on purpose — don't leak existence to drive-by URL probes.
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      }
+    }
+
     return NextResponse.json({ success: true, event });
   } catch (error) {
     console.error('Event fetch error:', error);
@@ -29,6 +51,42 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+/**
+ * True if the caller is an event admin OR carries a valid invite code for
+ * the event. Used to gate access to private events.
+ */
+async function callerCanAccessPrivateEvent(
+  request: NextRequest,
+  eventId: string
+): Promise<boolean> {
+  // Admin path — JWT in header/cookie that maps to an event_admins row.
+  const token = extractToken(request);
+  if (token) {
+    const access = await adminService.verifyEventAccess(token, eventId);
+    if (access.isAuthorized) return true;
+  }
+
+  // Invite-code path — code can come from either the query string or the
+  // X-Invite-Code header. Either format is fine; clients use whichever is
+  // most convenient.
+  const code =
+    request.nextUrl.searchParams.get('code') ||
+    request.headers.get('x-invite-code');
+
+  if (code) {
+    const sb = createServiceRoleClient();
+    const { data: invite } = await sb
+      .from('invites')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('code', code)
+      .maybeSingle();
+    if (invite) return true;
+  }
+
+  return false;
 }
 
 /**

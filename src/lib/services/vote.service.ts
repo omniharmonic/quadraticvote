@@ -22,6 +22,103 @@ export function computeAnonInviteCode(
 }
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
 import type { Vote } from '@/lib/types';
+import {
+  DEFAULT_VOTE_SETTINGS,
+  type VoteSettings,
+} from '@/lib/services/event.service';
+
+interface VoteAuthContext {
+  /** Authenticated user id, when one was attached to the request. */
+  userId?: string;
+  /** Authenticated user's email, when present. */
+  email?: string;
+  /** True iff the auth provider has confirmed the user's email. */
+  emailVerified?: boolean;
+}
+
+/**
+ * Pull a normalized VoteSettings out of a raw events row. Exported so the
+ * unit tests can exercise the toggle defaults directly.
+ */
+export function readVoteSettings(eventRow: any): VoteSettings {
+  const v = eventRow?.vote_settings;
+  if (!v || typeof v !== 'object') return { ...DEFAULT_VOTE_SETTINGS };
+  return {
+    allowVoteChanges:
+      typeof v.allowVoteChanges === 'boolean'
+        ? v.allowVoteChanges
+        : DEFAULT_VOTE_SETTINGS.allowVoteChanges,
+    allowLateSubmissions:
+      typeof v.allowLateSubmissions === 'boolean'
+        ? v.allowLateSubmissions
+        : DEFAULT_VOTE_SETTINGS.allowLateSubmissions,
+    requireEmailVerification:
+      typeof v.requireEmailVerification === 'boolean'
+        ? v.requireEmailVerification
+        : DEFAULT_VOTE_SETTINGS.requireEmailVerification,
+    allowAnonymous:
+      typeof v.allowAnonymous === 'boolean'
+        ? v.allowAnonymous
+        : DEFAULT_VOTE_SETTINGS.allowAnonymous,
+  };
+}
+
+/**
+ * Pure window check used inside `submitVote`. Exported for unit tests.
+ *
+ * Throws when the request falls outside the voting window. `allowLateSubmissions`
+ * relaxes the upper bound only — voting can never start before `start_time`.
+ */
+export function assertWithinVotingWindow(
+  event: { start_time: string | Date; end_time: string | Date },
+  settings: Pick<VoteSettings, 'allowLateSubmissions'>,
+  now: Date = new Date()
+): void {
+  const start = new Date(event.start_time as any);
+  const end = new Date(event.end_time as any);
+  if (now < start) throw new Error('Voting has not started yet');
+  if (now > end && !settings.allowLateSubmissions) {
+    throw new Error('Voting is closed');
+  }
+}
+
+/**
+ * Pure pre-check for the email-verification toggle. Throws when the toggle
+ * is on and the caller's auth context doesn't carry a confirmed email.
+ */
+export function assertEmailVerificationOk(
+  settings: Pick<VoteSettings, 'requireEmailVerification'>,
+  auth?: VoteAuthContext
+): void {
+  if (!settings.requireEmailVerification) return;
+  if (!auth?.userId || !auth.emailVerified) {
+    throw new Error(
+      'This event requires a signed-in account with a verified email'
+    );
+  }
+}
+
+/**
+ * Pure pre-check for the anonymous-voter fall-through path.
+ *
+ * Returns `true` when the caller may proceed as an anonymous voter (i.e. no
+ * real invite row matched, but the event allows it). Throws when the event
+ * is public-but-no-anon, returns `false` when the event is private/unlisted
+ * and no real invite was found (caller should reject with "Invalid invite
+ * code").
+ */
+export function canFallThroughToAnonymous(eventCtx: {
+  visibility: string;
+  allowAnonymous: boolean;
+}): boolean {
+  if (eventCtx.visibility !== 'public') return false;
+  if (!eventCtx.allowAnonymous) {
+    throw new Error(
+      'This event is public but does not allow anonymous voting. Enter a valid invite code.'
+    );
+  }
+  return true;
+}
 
 export class VoteService {
   /**
@@ -31,12 +128,9 @@ export class VoteService {
     eventId: string,
     inviteCode: string,
     allocations: Record<string, number>,
-    metadata?: { ipAddress?: string; userAgent?: string }
+    metadata?: { ipAddress?: string; userAgent?: string; auth?: VoteAuthContext }
   ): Promise<Vote> {
-    // 1. Validate invite code
-    const invite = await this.validateInviteCode(eventId, inviteCode);
-
-    // 2. Validate event is active
+    // 1. Load event (needed before invite validation so toggles can shape it).
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select('*')
@@ -44,15 +138,28 @@ export class VoteService {
       .single();
 
     if (eventError || !event) throw new Error('Event not found');
-    if (!this.isVotingOpen(event)) throw new Error('Voting is closed');
+    const settings = readVoteSettings(event);
 
-    // 3. Validate credit allocation
+    // 2. Window check, with optional late-submission grace.
+    assertWithinVotingWindow(event, settings);
+
+    // 3. Email-verification gate, when required by the event.
+    assertEmailVerificationOk(settings, metadata?.auth);
+
+    // 4. Validate the invite/anon path. Pass settings so this layer can
+    // refuse `anonymous` ballots when the event has disabled them.
+    const invite = await this.validateInviteCode(eventId, inviteCode, {
+      visibility: event.visibility,
+      allowAnonymous: settings.allowAnonymous,
+    });
+
+    // 5. Validate credit allocation
     await this.validateAllocations(event, allocations);
 
-    // 4. Calculate total credits used
+    // 6. Calculate total credits used
     const totalCredits = getTotalCredits(allocations);
 
-    // 5. Handle anonymous voting for public events
+    // 7. Resolve final invite code (anon → IP/UA hash).
     let finalInviteCode = inviteCode;
     if (invite.isVirtual && inviteCode === 'anonymous') {
       finalInviteCode = computeAnonInviteCode(
@@ -62,13 +169,30 @@ export class VoteService {
       );
     }
 
-    // 6. Insert or update vote.
+    // 8. allowVoteChanges gate — block the upsert path when disabled and a
+    // ballot already exists for this voter.
+    if (!settings.allowVoteChanges) {
+      const { data: existing } = await supabase
+        .from('votes')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('invite_code', finalInviteCode)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error(
+          'This event does not allow vote changes — your ballot has already been recorded'
+        );
+      }
+    }
+
+    // 9. Insert or update vote.
     //
     // The votes table has a UNIQUE (event_id, invite_code) constraint to
     // enforce one ballot per voter. We must tell supabase-js to use that
     // constraint as the conflict target — without `onConflict` it falls
     // back to the primary key and a re-submitted ballot trips the unique
-    // and 500s. This is the supported "edit your vote" path.
+    // and 500s.
     const { data: vote, error: voteError } = await supabase
       .from('votes')
       .upsert(
@@ -89,8 +213,8 @@ export class VoteService {
     if (voteError) {
       throw new Error(`Failed to submit vote: ${voteError.message}`);
     }
-    
-    // 6. Update invite tracking (skip for virtual invites).
+
+    // 10. Update invite tracking (skip for virtual invites).
     // Only set used_at if it's not already set — preserves the original
     // open time so dashboard "opened" vs "voted" can diverge meaningfully.
     if (!invite.isVirtual) {
@@ -107,23 +231,24 @@ export class VoteService {
 
       if (trackingError) {
         console.error('Failed to update invite tracking:', trackingError);
-        // Don't fail the vote for tracking errors
       }
     }
-    
-    // 7. Skip cache invalidation (Redis removed)
-    // Note: Results cache invalidation disabled since Redis was removed
 
-    // 8. Skip live aggregation (Redis removed)
-    // Note: Live aggregation disabled since Redis was removed
-    
     return vote as Vote;
   }
   
   /**
-   * Validate invite code for this event
+   * Validate invite code for this event.
+   *
+   * Resolution order:
+   *  1. A real invite row matching the code (any visibility).
+   *  2. Anonymous fall-through, only on public events that allow it.
    */
-  private async validateInviteCode(eventId: string, code: string): Promise<any> {
+  private async validateInviteCode(
+    eventId: string,
+    code: string,
+    eventCtx: { visibility: string; allowAnonymous: boolean }
+  ): Promise<any> {
     // First, check if a specific invite code exists
     const { data: invite } = await supabase
       .from('invites')
@@ -140,38 +265,20 @@ export class VoteService {
       return invite;
     }
 
-    // If no specific invite found, check if this is a public event
-    const { data: event } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .single();
-
-    if (!event) throw new Error('Event not found');
-
-    // For public events, allow voting without specific invite codes
-    if (event.visibility === 'public') {
-      // Create a virtual invite for tracking purposes
+    // No real invite. Anonymous fall-through is only legal on public events
+    // that haven't disabled anonymous participation.
+    if (canFallThroughToAnonymous(eventCtx)) {
       return {
         event_id: eventId,
         code: code,
         invite_type: 'voting',
         created_at: new Date(),
-        isVirtual: true // Flag to indicate this is not a real database invite
+        isVirtual: true,
       };
     }
 
-    // For private events, invite code is required
+    // For private/unlisted events, an invite code is required.
     throw new Error('Invalid invite code');
-  }
-  
-  /**
-   * Check if voting is currently open
-   */
-  private isVotingOpen(event: any): boolean {
-    const now = new Date();
-    // Database fields use snake_case
-    return now >= new Date(event.start_time) && now <= new Date(event.end_time);
   }
   
   /**

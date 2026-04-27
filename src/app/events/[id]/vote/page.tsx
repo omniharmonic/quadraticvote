@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { authedFetch } from '@/lib/utils/authed-fetch';
 import { Slider } from '@/components/ui/slider';
 import {
   Dialog,
@@ -44,7 +45,13 @@ export default function VotingPage() {
   /* ─── load event ─── */
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/events/${params.id}`)
+    // Forward any invite code on the URL so private events can be loaded
+    // by their invitees (the API gates GET by visibility).
+    const urlCode = searchParams?.get('code');
+    const url = urlCode
+      ? `/api/events/${params.id}?code=${encodeURIComponent(urlCode)}`
+      : `/api/events/${params.id}`;
+    fetch(url)
       .then((r) => r.json())
       .then((d) => {
         if (cancelled || !d.event) return;
@@ -55,7 +62,7 @@ export default function VotingPage() {
       })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [params.id]);
+  }, [params.id, searchParams]);
 
   /* ─── code from URL or anon for public ─── */
   useEffect(() => {
@@ -125,7 +132,10 @@ export default function VotingPage() {
     setShowConfirmDialog(false);
     setIsSubmitting(true);
     try {
-      const r = await fetch(`/api/events/${params.id}/votes`, {
+      // Use authedFetch so a signed-in voter's bearer token rides along —
+      // events with requireEmailVerification need it. Anonymous voters
+      // simply send no token, and the server falls back accordingly.
+      const r = await authedFetch(`/api/events/${params.id}/votes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteCode, allocations }),

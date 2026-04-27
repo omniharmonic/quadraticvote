@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS events (
   show_results_during_voting BOOLEAN DEFAULT FALSE,
   show_results_after_close BOOLEAN DEFAULT TRUE,
 
+  -- Runtime toggles (allowVoteChanges, allowLateSubmissions,
+  -- requireEmailVerification, allowAnonymous). See migration
+  -- 20260427170800_events_vote_settings.sql for shape and defaults.
+  vote_settings JSONB NOT NULL DEFAULT jsonb_build_object(
+    'allowVoteChanges',         true,
+    'allowLateSubmissions',     false,
+    'requireEmailVerification', false,
+    'allowAnonymous',           true
+  ),
+
   -- Admin
   admin_code TEXT,
   created_by UUID REFERENCES users(id) ON DELETE SET NULL,

@@ -72,10 +72,18 @@ export interface Event {
   tokenGating?: Record<string, unknown>;
   showResultsDuringVoting: boolean;
   showResultsAfterClose: boolean;
+  voteSettings?: VoteSettings;
   createdBy?: string;
   adminCode?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface VoteSettings {
+  allowVoteChanges: boolean;
+  allowLateSubmissions: boolean;
+  requireEmailVerification: boolean;
+  allowAnonymous: boolean;
 }
 
 // ============================================

@@ -24,9 +24,8 @@ export default function EventSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Form state — only fields backed by real columns. Other "voting"
-  // toggles (allowVoteChanges, maxVotesPerUser, etc.) were removed because
-  // the schema has no columns for them and saves were silently dropped.
+  // Form state — every field here round-trips to a real DB column or
+  // events.vote_settings JSONB key. Saves go through PATCH /api/events/:id.
   const [settings, setSettings] = useState({
     title: '',
     description: '',
@@ -36,6 +35,12 @@ export default function EventSettingsPage() {
     creditsPerVoter: 100,
     showResultsDuringVoting: false,
     showResultsAfterClose: true,
+    voteSettings: {
+      allowVoteChanges: true,
+      allowLateSubmissions: false,
+      requireEmailVerification: false,
+      allowAnonymous: true,
+    },
   });
 
   useEffect(() => {
@@ -49,6 +54,7 @@ export default function EventSettingsPage() {
 
       if (response.ok && data.event) {
         setEvent(data.event);
+        const vs = data.event.voteSettings ?? {};
         setSettings({
           title: data.event.title || '',
           description: data.event.description || '',
@@ -58,6 +64,12 @@ export default function EventSettingsPage() {
           creditsPerVoter: data.event.creditsPerVoter || 100,
           showResultsDuringVoting: !!data.event.showResultsDuringVoting,
           showResultsAfterClose: data.event.showResultsAfterClose !== false,
+          voteSettings: {
+            allowVoteChanges: vs.allowVoteChanges ?? true,
+            allowLateSubmissions: vs.allowLateSubmissions ?? false,
+            requireEmailVerification: vs.requireEmailVerification ?? false,
+            allowAnonymous: vs.allowAnonymous ?? true,
+          },
         });
       } else {
         toast({
@@ -314,6 +326,84 @@ export default function EventSettingsPage() {
               </div>
 
               <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="allowVoteChanges">Allow Vote Changes</Label>
+                    <p className="text-sm text-gray-500">
+                      Let voters edit and resubmit their ballot until the event closes.
+                    </p>
+                  </div>
+                  <Switch
+                    id="allowVoteChanges"
+                    checked={settings.voteSettings.allowVoteChanges}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        voteSettings: { ...settings.voteSettings, allowVoteChanges: checked },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="allowLateSubmissions">Allow Late Submissions</Label>
+                    <p className="text-sm text-gray-500">
+                      Accept ballots submitted after the end time.
+                    </p>
+                  </div>
+                  <Switch
+                    id="allowLateSubmissions"
+                    checked={settings.voteSettings.allowLateSubmissions}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        voteSettings: { ...settings.voteSettings, allowLateSubmissions: checked },
+                      })
+                    }
+                  />
+                </div>
+
+                {settings.visibility === 'public' && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="allowAnonymous">Allow Anonymous Voting</Label>
+                      <p className="text-sm text-gray-500">
+                        Public events only. When off, voters must enter an invite code.
+                      </p>
+                    </div>
+                    <Switch
+                      id="allowAnonymous"
+                      checked={settings.voteSettings.allowAnonymous}
+                      onCheckedChange={(checked) =>
+                        setSettings({
+                          ...settings,
+                          voteSettings: { ...settings.voteSettings, allowAnonymous: checked },
+                        })
+                      }
+                    />
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="requireEmailVerification">Require Email Verification</Label>
+                    <p className="text-sm text-gray-500">
+                      Voters must be signed in with a verified email address.
+                    </p>
+                  </div>
+                  <Switch
+                    id="requireEmailVerification"
+                    checked={settings.voteSettings.requireEmailVerification}
+                    onCheckedChange={(checked) =>
+                      setSettings({
+                        ...settings,
+                        voteSettings: { ...settings.voteSettings, requireEmailVerification: checked },
+                      })
+                    }
+                  />
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="showResultsDuringVoting">Show Live Results</Label>

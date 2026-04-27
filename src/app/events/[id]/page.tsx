@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navigation from '@/components/layout/navigation';
 import {
@@ -23,6 +23,7 @@ export const dynamic = 'force-dynamic';
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isEventAdmin } = useAuth();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +31,12 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/events/${params.id}`)
+    // Forward any invite code so private events resolve for their invitees.
+    const urlCode = searchParams?.get('code');
+    const url = urlCode
+      ? `/api/events/${params.id}?code=${encodeURIComponent(urlCode)}`
+      : `/api/events/${params.id}`;
+    fetch(url)
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
@@ -40,7 +46,7 @@ export default function EventDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [params.id, searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -189,19 +195,19 @@ export default function EventDetailPage() {
                   When voting closes, the rule below selects which options win.
                 </p>
 
-                <div className="mt-5 inline-flex items-center gap-3 px-4 py-3 border border-blueprint/30 bg-blueprint/8 rounded-[3px]">
+                <div className="mt-5 inline-flex flex-col items-start gap-1 px-4 py-3 border border-blueprint/30 bg-blueprint/8 rounded-[3px]">
                   <span className="font-mono text-[10.5px] uppercase tracking-widest text-blueprint">
-                    Cut rule
+                    Selection method
                   </span>
-                  <span className="font-display text-ink text-lg">
+                  <span className="font-display text-ink text-lg leading-tight">
                     {config.threshold_mode === 'top_n' &&
-                      `Top ${config.top_n_count} options selected`}
+                      `The ${config.top_n_count} options with the most votes win`}
                     {config.threshold_mode === 'percentage' &&
-                      `≥ ${config.percentage_threshold}% of leader`}
+                      `Options with at least ${config.percentage_threshold}% of the leading option win`}
                     {config.threshold_mode === 'absolute_votes' &&
-                      `≥ ${config.absolute_vote_threshold} votes`}
+                      `Options with at least ${config.absolute_vote_threshold} votes win`}
                     {config.threshold_mode === 'above_average' &&
-                      'Above the average vote count'}
+                      'Options scoring above the average vote count win'}
                   </span>
                 </div>
               </>
