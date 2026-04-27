@@ -12,6 +12,7 @@ import {
   Sqrt,
 } from '@/components/schematic';
 import { FieldRow } from '@/components/auth/AuthShell';
+import { authedFetch } from '@/lib/utils/authed-fetch';
 import { toast } from '@/hooks/use-toast';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,8 @@ export default function ProposalSubmissionPage() {
     const url = inviteCode
       ? `/api/events/${eventId}?code=${encodeURIComponent(inviteCode)}`
       : `/api/events/${eventId}`;
-    fetch(url)
+    // authedFetch so admins can load private events even without ?code=.
+    authedFetch(url)
       .then((r) => r.json())
       .then((d) => !cancelled && setEvent(d?.event ?? null))
       .finally(() => !cancelled && setLoading(false));

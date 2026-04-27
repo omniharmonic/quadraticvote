@@ -51,7 +51,8 @@ export default function VotingPage() {
     const url = urlCode
       ? `/api/events/${params.id}?code=${encodeURIComponent(urlCode)}`
       : `/api/events/${params.id}`;
-    fetch(url)
+    // authedFetch so admins can load private events even without ?code=.
+    authedFetch(url)
       .then((r) => r.json())
       .then((d) => {
         if (cancelled || !d.event) return;

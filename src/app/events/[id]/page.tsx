@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navigation from '@/components/layout/navigation';
+import { authedFetch } from '@/lib/utils/authed-fetch';
 import {
   GraphPaper,
   SectionLabel,
@@ -32,11 +33,13 @@ export default function EventDetailPage() {
   useEffect(() => {
     let cancelled = false;
     // Forward any invite code so private events resolve for their invitees.
+    // Use authedFetch so the creator/admin's bearer token rides along —
+    // private events 404 to anyone who isn't an admin or invitee.
     const urlCode = searchParams?.get('code');
     const url = urlCode
       ? `/api/events/${params.id}?code=${encodeURIComponent(urlCode)}`
       : `/api/events/${params.id}`;
-    fetch(url)
+    authedFetch(url)
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;
