@@ -626,7 +626,7 @@ export default function CreateEventPage() {
                   <div className="space-y-2">
                     <Label htmlFor="threshold">Selection Method *</Label>
                     <Select
-                      value={formData.thresholdMode}
+                      value={formData.thresholdMode ?? ''}
                       onValueChange={(value) => updateFormData({ thresholdMode: value })}
                     >
                       <SelectTrigger data-testid="selection-method-dropdown">
