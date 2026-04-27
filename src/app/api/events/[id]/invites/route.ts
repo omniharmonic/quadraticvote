@@ -11,6 +11,22 @@ import { eventService } from '@/lib/services/event.service';
 const supabase = createServiceRoleClient();
 import { withEventAdmin, createAuthErrorResponse } from '@/lib/utils/auth-middleware';
 
+function toClientInvite(row: any) {
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    email: row.email,
+    code: row.code,
+    inviteType: row.invite_type,
+    sentAt: row.sent_at,
+    usedAt: row.used_at,
+    voteSubmittedAt: row.vote_submitted_at,
+    proposalsSubmitted: row.proposals_submitted ?? 0,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  };
+}
+
 export const GET = withEventAdmin(async (
   request: NextRequest,
   { params }: { params: { id: string } },
@@ -31,9 +47,11 @@ export const GET = withEventAdmin(async (
       throw new Error(`Failed to fetch invites: ${error.message}`);
     }
 
+    const invites = (eventInvites || []).map(toClientInvite);
+
     return NextResponse.json({
       success: true,
-      invites: eventInvites
+      invites,
     });
   } catch (error) {
     console.error('Error fetching invites:', error);
@@ -113,7 +131,7 @@ export const POST = withEventAdmin(async (
 
     return NextResponse.json({
       success: true,
-      invite: newInvite,
+      invite: toClientInvite(newInvite),
       emailSent: emailResult.sent,
       emailError: emailResult.sent ? undefined : emailResult.error,
       message: emailResult.sent

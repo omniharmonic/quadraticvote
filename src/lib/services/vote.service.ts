@@ -90,14 +90,19 @@ export class VoteService {
       throw new Error(`Failed to submit vote: ${voteError.message}`);
     }
     
-    // 6. Update invite tracking (skip for virtual invites)
+    // 6. Update invite tracking (skip for virtual invites).
+    // Only set used_at if it's not already set — preserves the original
+    // open time so dashboard "opened" vs "voted" can diverge meaningfully.
     if (!invite.isVirtual) {
+      const now = new Date().toISOString();
+      const trackingUpdate: Record<string, string> = {
+        vote_submitted_at: now,
+      };
+      if (!invite.used_at) trackingUpdate.used_at = now;
+
       const { error: trackingError } = await supabase
         .from('invites')
-        .update({
-          vote_submitted_at: new Date().toISOString(),
-          used_at: new Date().toISOString(),
-        })
+        .update(trackingUpdate)
         .eq('code', finalInviteCode);
 
       if (trackingError) {

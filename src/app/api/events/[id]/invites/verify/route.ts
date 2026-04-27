@@ -77,11 +77,11 @@ export async function POST(
       });
     }
 
-    // Update invite tracking - mark as opened if not already
-    if (!invite.opened_at) {
+    // Update invite tracking - mark as opened (= used_at) if not already
+    if (!invite.used_at) {
       await supabase
         .from('invites')
-        .update({ opened_at: new Date().toISOString() })
+        .update({ used_at: new Date().toISOString() })
         .eq('id', invite.id);
     }
 
@@ -92,7 +92,7 @@ export async function POST(
         id: invite.id,
         email: invite.email,
         inviteType: invite.invite_type,
-        openedAt: invite.opened_at
+        usedAt: invite.used_at,
       }
     });
 

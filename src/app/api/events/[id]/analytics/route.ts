@@ -179,13 +179,15 @@ function calculateProposalStats(proposals: any[]) {
 }
 
 function calculateInviteStats(invites: any[]) {
-  const used = invites.filter(i => i.used_at).length;
-  const opened = invites.filter(i => i.opened_at).length;
+  // used_at is set when the invite link is first opened (verify route).
+  // vote_submitted_at is set when a vote is actually cast.
+  const opened = invites.filter(i => i.used_at).length;
+  const voted = invites.filter(i => i.vote_submitted_at).length;
 
   return {
     total: invites.length,
-    used: used,
-    opened: opened,
+    opened,
+    voted,
   };
 }
 
