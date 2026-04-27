@@ -40,6 +40,7 @@ type Gate =
   | 'auth-required'      // requireEmailVerification + no session
   | 'verify-email'       // requireEmailVerification + session but unconfirmed
   | 'invite-required'    // private event without code, or public+anon-disabled
+  | 'ballot-final'       // already voted on an allowVoteChanges=false event
   | 'ready';             // we have a usable invite path, show the ballot
 
 export default function VotingPage() {
@@ -131,16 +132,25 @@ export default function VotingPage() {
     fetch(`/api/events/${params.id}/votes?code=${inviteCode}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d?.vote?.allocations) {
-          setAllocations(d.vote.allocations);
-          toast({
-            title: 'Previous draft loaded',
-            description: 'Edit and resubmit to update your vote.',
-          });
+        if (!d?.vote?.allocations) return;
+        setAllocations(d.vote.allocations);
+
+        // If the organizer made the first ballot final, the server will
+        // reject any re-submission with "already been recorded". Lock the
+        // page into a read-only "your ballot is in" view instead of
+        // letting the user edit allocations and hit a 400 on submit.
+        if (event?.voteSettings?.allowVoteChanges === false) {
+          setGate('ballot-final');
+          return;
         }
+
+        toast({
+          title: 'Previous draft loaded',
+          description: 'Edit and resubmit to update your vote.',
+        });
       })
       .catch(() => {});
-  }, [inviteCode, gate, params.id]);
+  }, [inviteCode, gate, params.id, event]);
 
   const verifyInviteCode = async (code: string) => {
     const r = await fetch(`/api/events/${params.id}/invites/verify`, {
@@ -171,9 +181,16 @@ export default function VotingPage() {
     if (!user?.email) return;
     setResendingEmail(true);
     try {
+      // Embed the vote URL as the callback destination so clicking the
+      // verification link drops the user right back on this page with a
+      // confirmed session — no manual refresh needed.
+      const origin =
+        typeof window !== 'undefined' ? window.location.origin : '';
+      const emailRedirectTo = `${origin}/auth/callback?redirect=${encodeURIComponent(returnUrl)}`;
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: user.email,
+        options: { emailRedirectTo },
       });
       if (error) throw error;
       toast({
@@ -309,8 +326,9 @@ export default function VotingPage() {
         </h1>
         <p className="mt-3 font-serif text-[16px] text-ink-2 leading-snug">
           We sent a confirmation link to{' '}
-          <span className="font-mono text-ink">{user?.email}</span> when you
-          signed up. Click it to confirm, then come back to this page.
+          <span className="font-mono text-ink">{user?.email}</span>. Click
+          it and you&apos;ll land right back here — this page updates on
+          its own once your email is confirmed.
         </p>
 
         <EventPreview event={event} />
@@ -323,13 +341,82 @@ export default function VotingPage() {
         >
           {resendingEmail ? 'Sending…' : 'Resend verification email'}
         </button>
-        <button
-          type="button"
-          onClick={() => router.refresh()}
-          className="btn-paper w-full mt-3"
-        >
-          I&apos;ve verified — refresh
-        </button>
+        <p className="mt-4 text-center font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+          Listening for confirmation…
+        </p>
+      </GateShell>
+    );
+  }
+
+  /* ─── ballot-final: already voted on a non-editable event ─── */
+  if (gate === 'ballot-final') {
+    const submittedQuad = calculateQuadraticVotes(allocations);
+    const submittedTotal = getTotalCredits(allocations);
+    const cast = event.options
+      .filter((o: any) => (allocations[o.id] ?? 0) > 0)
+      .map((o: any) => ({
+        id: o.id,
+        title: o.title,
+        credits: allocations[o.id],
+        votes: submittedQuad[o.id] ?? 0,
+      }));
+    return (
+      <GateShell eventTitle={event.title}>
+        <SectionLabel>Ballot recorded</SectionLabel>
+        <h1 className="mt-3 font-display text-4xl text-ink leading-tight text-balance">
+          You&apos;ve already voted.
+        </h1>
+        <p className="mt-3 font-serif text-[16px] text-ink-2 leading-snug">
+          The organizer set the first ballot as final, so this one is locked
+          in — no edits. Here&apos;s what you submitted.
+        </p>
+
+        <SchematicCard accent className="mt-8 p-6">
+          <div className="flex items-baseline justify-between">
+            <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+              Your ballot
+            </span>
+            <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 tabular-nums">
+              {submittedTotal} / {event.creditsPerVoter} credits
+            </span>
+          </div>
+          <ul className="mt-3 divide-y divide-ink/12">
+            {cast.length === 0 ? (
+              <li className="py-3 font-serif text-[14px] text-ink-3">
+                No allocations were recorded.
+              </li>
+            ) : (
+              cast.map((c: any) => (
+                <li
+                  key={c.id}
+                  className="py-2 flex items-baseline justify-between gap-3"
+                >
+                  <span className="font-display text-[15px] text-ink truncate">
+                    {c.title}
+                  </span>
+                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3 tabular-nums whitespace-nowrap">
+                    {c.credits} cr → {c.votes.toFixed(1)} v
+                  </span>
+                </li>
+              ))
+            )}
+          </ul>
+        </SchematicCard>
+
+        <div className="mt-6 flex flex-col gap-2">
+          <Link
+            href={`/events/${params.id}/results`}
+            className="btn-ink w-full text-center"
+          >
+            See live results →
+          </Link>
+          <Link
+            href={`/events/${params.id}`}
+            className="btn-paper w-full text-center"
+          >
+            Back to event
+          </Link>
+        </div>
       </GateShell>
     );
   }

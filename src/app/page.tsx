@@ -96,9 +96,9 @@ export default function HomePage() {
 
             {/* The √ display block */}
             <div className="col-span-12 lg:col-span-4 anim-ink [animation-delay:140ms]">
-              <SchematicCard accent className="relative p-7 md:p-9">
-                <div className="absolute -top-3 left-6">
-                  <Stamp tone="terracotta" rotate={-3}>
+              <SchematicCard accent className="relative p-7 md:p-9 pt-12">
+                <div className="absolute top-3 right-3">
+                  <Stamp tone="terracotta">
                     Method · √ credits
                   </Stamp>
                 </div>

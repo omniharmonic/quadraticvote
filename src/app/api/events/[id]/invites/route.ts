@@ -126,6 +126,14 @@ export const POST = withEventAdmin(async (
           eventId,
           code: newInvite.code,
           inviteType,
+          // Pass the toggles so the email body warns the recipient about
+          // gates they're about to hit (sign-in required, ballot is final).
+          requireEmailVerification:
+            event.voteSettings?.requireEmailVerification === true,
+          allowVoteChanges: event.voteSettings?.allowVoteChanges,
+          endTime: event.endTime
+            ? new Date(event.endTime).toISOString()
+            : undefined,
         })
       : { sent: false, error: 'event_not_found' as const };
 

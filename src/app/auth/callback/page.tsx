@@ -24,12 +24,26 @@ function AuthCallbackContent() {
           return;
         }
 
+        // Honor a ?redirect= param so flows like email-verification can
+        // round-trip the user back to where they started (e.g. the vote
+        // page they were trying to access). Only allow same-origin paths
+        // — anything starting with `/` is on us; never follow an absolute
+        // URL into a phisher's domain.
+        const requested = searchParams.get('redirect') || searchParams.get('next');
+        const safeRedirect =
+          requested && requested.startsWith('/') && !requested.startsWith('//')
+            ? requested
+            : null;
+
         if (data.session) {
-          // User is authenticated, redirect to admin dashboard
-          router.push('/admin');
+          router.push(safeRedirect ?? '/admin');
         } else {
-          // No session, redirect to login
-          router.push('/auth/login');
+          // No session, send to login but preserve the desired final
+          // destination so login → vote round-trips too.
+          const loginHref = safeRedirect
+            ? `/auth/login?redirect=${encodeURIComponent(safeRedirect)}`
+            : '/auth/login';
+          router.push(loginHref);
         }
       } catch (error) {
         console.error('Unexpected error in auth callback:', error);
@@ -40,7 +54,7 @@ function AuthCallbackContent() {
     };
 
     handleAuthCallback();
-  }, [router]);
+  }, [router, searchParams]);
 
   if (loading) {
     return (
