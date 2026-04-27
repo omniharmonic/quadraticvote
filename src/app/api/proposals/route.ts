@@ -58,10 +58,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Proposal submission error:', error);
     
-    const statusCode = error instanceof Error && 
-      (error.message.includes('Invalid') || error.message.includes('closed'))
-      ? 400 
-      : 500;
+    // Map known client-input errors to 4xx so users see actionable messages
+    // instead of a generic 500.
+    const message = error instanceof Error ? error.message : '';
+    const statusCode =
+      /not found/i.test(message) ? 404 :
+      /reached the limit/i.test(message) ? 429 :
+      /invalid|closed|required|only for/i.test(message) ? 400 :
+      500;
 
     return NextResponse.json(
       {

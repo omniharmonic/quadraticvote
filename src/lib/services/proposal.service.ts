@@ -56,9 +56,15 @@ export class ProposalService {
     if (eventError || !event) throw new Error('Event not found');
     if (!this.areProposalsOpen(event)) throw new Error('Proposal submission is closed');
 
-    // 2. Validate submitter authorization if needed (snake_case from DB)
+    // 2. Validate submitter authorization if needed.
+    // The wizard writes camelCase (accessControl); older rows / future
+    // migrations may use snake_case (access_control). Honor both, with
+    // snake_case winning when present.
     const proposalConfig = event.proposal_config || event.proposalConfig;
-    if ((proposalConfig as any)?.access_control === 'invite_only') {
+    const accessControl =
+      (proposalConfig as any)?.access_control ??
+      (proposalConfig as any)?.accessControl;
+    if (accessControl === 'invite_only') {
       if (!input.inviteCode) throw new Error('Invite code required');
       await this.validateSubmitter(event.id, input.submitterEmail, input.inviteCode);
     }

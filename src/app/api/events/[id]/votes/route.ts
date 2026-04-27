@@ -97,10 +97,13 @@ export async function POST(
   } catch (error) {
     console.error('Vote submission error:', error);
     
-    const statusCode = error instanceof Error && 
-      (error.message.includes('Invalid') || error.message.includes('closed'))
-      ? 400 
-      : 500;
+    // Map known client-input errors to 4xx so users see actionable
+    // messages instead of generic 500s.
+    const message = error instanceof Error ? error.message : '';
+    const statusCode =
+      /not found/i.test(message) ? 404 :
+      /verified email|not started|closed|invalid|anonymous voting|allow vote changes|already been recorded/i.test(message) ? 400 :
+      500;
 
     return NextResponse.json(
       {
