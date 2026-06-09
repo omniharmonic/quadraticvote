@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { calculateQuadraticVotes, getTotalCredits } from '@/lib/utils/quadratic';
+import { computeBinaryStanding } from '@/lib/utils/binary-standing';
 import Navigation from '@/components/layout/navigation';
 import {
   GraphPaper,
@@ -59,6 +60,9 @@ export default function VotingPage() {
   const [inviteCode, setInviteCode] = useState<string>('');
   const [codeInput, setCodeInput] = useState<string>('');
   const [resendingEmail, setResendingEmail] = useState(false);
+  // Live aggregate votes from everyone else, keyed by option id. Only fetched
+  // when the organizer enabled show-results-during-voting.
+  const [liveVotes, setLiveVotes] = useState<Record<string, number> | null>(null);
 
   // Same URL the voter is on now — used to round-trip them back here after
   // signing in. Memoized so the value is stable across re-renders.
@@ -151,6 +155,34 @@ export default function VotingPage() {
       })
       .catch(() => {});
   }, [inviteCode, gate, params.id, event]);
+
+  /* ─── load live aggregate standings, if the organizer enabled them ─── */
+  useEffect(() => {
+    if (gate !== 'ready' || !event?.showResultsDuringVoting) return;
+    let cancelled = false;
+    const load = () => {
+      authedFetch(`/api/events/${params.id}/results`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (cancelled || !d?.results?.results) return;
+          const fr = d.results.results;
+          const map: Record<string, number> = {};
+          if (fr.framework_type === 'binary_selection') {
+            [...(fr.selected_options || []), ...(fr.not_selected_options || [])].forEach(
+              (o: any) => (map[o.option_id] = o.votes || 0)
+            );
+          } else {
+            (fr.distributions || []).forEach((d2: any) => (map[d2.option_id] = d2.votes || 0));
+          }
+          setLiveVotes(map);
+        })
+        .catch(() => {});
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [gate, event, params.id]);
 
   const verifyInviteCode = async (code: string) => {
     const r = await fetch(`/api/events/${params.id}/invites/verify`, {
@@ -491,6 +523,39 @@ export default function VotingPage() {
   const totalQuadVotes = Object.values(quadVotes).reduce((a, b) => a + b, 0);
   const framework = event.decisionFramework;
   const isBinary = framework?.framework_type === 'binary_selection';
+  const resourceSymbol = framework?.config?.resource_symbol ?? '';
+  const resourceName = framework?.config?.resource_name ?? 'the pool';
+
+  // Projected votes per option = everyone else's live total + this voter's
+  // pending ballot. Falls back to the voter's own ballot alone when live
+  // standings aren't published.
+  const projectedVotes: Record<string, number> = {};
+  for (const o of event.options ?? []) {
+    projectedVotes[o.id] = (liveVotes?.[o.id] ?? 0) + (quadVotes[o.id] ?? 0);
+  }
+  const projectedTotalVotes = Object.values(projectedVotes).reduce((a, b) => a + b, 0);
+
+  // Binary live standing (rank + selected) when results are visible.
+  const standingById = new Map<string, { rank: number; selected: boolean; onBubble: boolean }>();
+  if (isBinary && liveVotes && framework?.config) {
+    computeBinaryStanding(
+      (event.options ?? []).map((o: any) => ({ option_id: o.id, votes: projectedVotes[o.id] })),
+      framework.config
+    ).forEach((s) => standingById.set(s.option_id, s));
+  }
+  const myPicksSelected = (event.options ?? []).filter(
+    (o: any) => (allocations[o.id] ?? 0) > 0 && standingById.get(o.id)?.selected
+  ).length;
+  const myPicksCount = (event.options ?? []).filter((o: any) => (allocations[o.id] ?? 0) > 0).length;
+  const topN = framework?.config?.top_n_count;
+
+  // Framework-adapted hero copy reinforces the mental model (PRD §7.2).
+  const heroTitle = isBinary
+    ? 'Choose winners by allocating credits.'
+    : `Allocate credits to divide ${resourceName}.`;
+  const heroTip = isBinary
+    ? 'spread credits across the options you want to win'
+    : 'put more credits where you think more should go';
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -565,15 +630,23 @@ export default function VotingPage() {
               ⚠ Over budget — pull back {usedCredits - totalCredits} credit{usedCredits - totalCredits === 1 ? '' : 's'}
             </p>
           )}
+          {!overBudget && isBinary && liveVotes && myPicksCount > 0 && (
+            <p className="mt-2 font-mono text-[11px] uppercase tracking-widest text-ink-3">
+              Supporting {myPicksCount} option{myPicksCount === 1 ? '' : 's'} ·{' '}
+              <span className="text-blueprint">
+                {myPicksSelected} currently {topN ? `in the top ${topN}` : 'selected'}
+              </span>
+            </p>
+          )}
         </div>
       </div>
 
       {/* Hero block */}
       <section className="border-b border-ink/15">
         <div className="mx-auto max-w-4xl px-5 md:px-8 py-10">
-          <SectionLabel>Cast a vote</SectionLabel>
+          <SectionLabel>{isBinary ? 'Select winners' : 'Allocate the pool'}</SectionLabel>
           <h1 className="mt-3 font-display text-[34px] sm:text-[42px] leading-[1.05] tracking-[-0.018em] text-ink anim-ink text-balance">
-            Allocate your credits. The math does the rest.
+            {heroTitle}
           </h1>
           <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-1 font-serif text-[15px] text-ink-2">
             <span>
@@ -582,8 +655,20 @@ export default function VotingPage() {
             </span>
             <span>
               <span className="text-ink-3 font-mono text-[11px] uppercase tracking-widest mr-2">Tip</span>
-              spreading credits earns more votes than concentrating
+              {heroTip}
             </span>
+            {isBinary && topN ? (
+              <span>
+                <span className="text-ink-3 font-mono text-[11px] uppercase tracking-widest mr-2">Rule</span>
+                top {topN} option{topN === 1 ? '' : 's'} win
+              </span>
+            ) : !isBinary && framework?.config?.total_pool_amount ? (
+              <span>
+                <span className="text-ink-3 font-mono text-[11px] uppercase tracking-widest mr-2">Pool</span>
+                {resourceSymbol}
+                {Number(framework.config.total_pool_amount).toLocaleString()} · {resourceName}
+              </span>
+            ) : null}
           </div>
         </div>
       </section>
@@ -593,8 +678,13 @@ export default function VotingPage() {
         {event.options?.map((option: any, i: number) => {
           const credits = allocations[option.id] ?? 0;
           const votes = quadVotes[option.id] ?? 0;
-          const percentOfPool = totalQuadVotes > 0 ? (votes / totalQuadVotes) * 100 : 0;
+          // Proportional projected share: prefer live totals when published,
+          // else the voter's own ballot, so the preview is meaningful either way.
+          const shareBasisTotal = liveVotes ? projectedTotalVotes : totalQuadVotes;
+          const shareBasisVotes = liveVotes ? projectedVotes[option.id] : votes;
+          const percentOfPool = shareBasisTotal > 0 ? (shareBasisVotes / shareBasisTotal) * 100 : 0;
           const allocatedHere = credits > 0;
+          const standing = standingById.get(option.id);
 
           return (
             <SchematicCard
@@ -612,6 +702,30 @@ export default function VotingPage() {
                     <p className="mt-1.5 font-serif text-[14.5px] text-ink-2 leading-snug">
                       {option.description}
                     </p>
+                  )}
+                  {/* Binary live standing chip: rank + selected / on the bubble */}
+                  {isBinary && standing && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-3 tabular-nums">
+                        Rank #{standing.rank}
+                      </span>
+                      <span
+                        className={cn(
+                          'font-mono text-[10px] uppercase tracking-widest px-1.5 py-0.5 border',
+                          standing.selected
+                            ? 'text-blueprint border-blueprint/40 bg-blueprint/8'
+                            : standing.onBubble
+                            ? 'text-terracotta border-terracotta/40 bg-terracotta/8'
+                            : 'text-ink-3 border-ink/20'
+                        )}
+                      >
+                        {standing.selected
+                          ? '✓ Selected'
+                          : standing.onBubble
+                          ? 'On the bubble'
+                          : 'Not selected'}
+                      </span>
+                    </div>
                   )}
                 </div>
 
@@ -654,9 +768,10 @@ export default function VotingPage() {
 
                 <Slider
                   data-testid={`allocation-${i}`}
+                  aria-label={`Credits allocated to ${option.title}`}
                   value={[credits]}
                   onValueChange={(v) => updateAllocation(option.id, v[0])}
-                  max={Math.min(100, totalCredits)}
+                  max={totalCredits}
                   step={1}
                   className="cursor-pointer"
                 />
@@ -688,34 +803,55 @@ export default function VotingPage() {
               Confirm · Final
             </Stamp>
             <DialogTitle className="font-display text-2xl text-ink">
-              Submit this ballot?
+              {isBinary ? 'Confirm your picks?' : 'Confirm your allocation?'}
             </DialogTitle>
             <DialogDescription className="font-serif text-[15px] text-ink-2">
-              Here&apos;s your final allocation:
+              {isBinary
+                ? 'These are the options you’re backing, with the votes each receives:'
+                : `Here’s how your credits steer ${resourceName}:`}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-1 max-h-72 overflow-y-auto -mx-6 px-6">
             {event.options
               .filter((o: any) => allocations[o.id] > 0)
-              .map((o: any) => (
-                <div
-                  key={o.id}
-                  className="flex items-baseline justify-between py-2 border-b border-dashed border-ink/15 last:border-b-0"
-                >
-                  <span className="font-display text-[16px] text-ink truncate pr-3">
-                    {o.title}
-                  </span>
-                  <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3 tabular-nums whitespace-nowrap">
-                    {allocations[o.id]} cr → {quadVotes[o.id].toFixed(1)} v
-                  </span>
-                </div>
-              ))}
+              .map((o: any) => {
+                const standing = standingById.get(o.id);
+                const projShare =
+                  projectedTotalVotes > 0 ? (projectedVotes[o.id] / projectedTotalVotes) * 100 : 0;
+                const projAmount =
+                  framework?.config?.total_pool_amount != null
+                    ? (projShare / 100) * Number(framework.config.total_pool_amount)
+                    : null;
+                return (
+                  <div
+                    key={o.id}
+                    className="flex items-baseline justify-between py-2 border-b border-dashed border-ink/15 last:border-b-0"
+                  >
+                    <span className="font-display text-[16px] text-ink truncate pr-3">
+                      {o.title}
+                      {isBinary && standing && (
+                        <span className="ml-2 font-mono text-[10px] uppercase tracking-widest text-ink-3">
+                          {standing.selected ? '· ✓ in the lead set' : `· #${standing.rank}`}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-ink-3 tabular-nums whitespace-nowrap">
+                      {!isBinary && projAmount != null
+                        ? `${allocations[o.id]} cr → ${resourceSymbol}${projAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                        : `${allocations[o.id]} cr → ${quadVotes[o.id].toFixed(1)} v`}
+                    </span>
+                  </div>
+                );
+              })}
           </div>
 
           <div className="border border-blueprint/25 bg-blueprint/8 px-3 py-2 font-serif text-[14px] text-ink-2 leading-snug">
             You spent <strong className="text-ink tabular-nums">{usedCredits}</strong>{' '}
-            of {totalCredits} credits. You can edit and resubmit later.
+            of {totalCredits} credits.
+            {!isBinary && liveVotes
+              ? ' Projected amounts shift as more people vote.'
+              : ' You can edit and resubmit later.'}
           </div>
 
           <DialogFooter className="gap-3">
