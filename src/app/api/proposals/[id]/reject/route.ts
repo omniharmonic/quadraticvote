@@ -4,13 +4,11 @@ export const dynamic = 'force-dynamic';
 
 import { proposalService } from '@/lib/services/proposal.service';
 import { withProposalAdmin } from '@/lib/utils/auth-middleware';
-import { createServiceRoleClient } from '@/lib/supabase';
-import type { User } from '@supabase/supabase-js';
 
 async function handleRejection(
   request: NextRequest,
   params: { id: string },
-  user: User
+  userId: string
 ) {
   try {
     const proposalId = params.id;
@@ -23,14 +21,8 @@ async function handleRejection(
       );
     }
 
-    const supabase = createServiceRoleClient();
-    const { data: userRecord } = await supabase
-      .from('users')
-      .select('id')
-      .eq('auth_id', user.id)
-      .single();
-
-    await proposalService.rejectProposal(proposalId, reason, userRecord?.id);
+    // userId is the resolved public.users.id (rejected_by foreign key target).
+    await proposalService.rejectProposal(proposalId, reason, userId);
 
     return NextResponse.json({
       success: true,
@@ -48,10 +40,10 @@ async function handleRejection(
   }
 }
 
-export const PATCH = withProposalAdmin(async (request, { params }, user) =>
-  handleRejection(request, params, user)
+export const PATCH = withProposalAdmin(async (request, { params }, user, role, userId) =>
+  handleRejection(request, params, userId)
 );
 
-export const POST = withProposalAdmin(async (request, { params }, user) =>
-  handleRejection(request, params, user)
+export const POST = withProposalAdmin(async (request, { params }, user, role, userId) =>
+  handleRejection(request, params, userId)
 );

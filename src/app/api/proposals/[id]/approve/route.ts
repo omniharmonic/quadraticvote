@@ -4,7 +4,6 @@ export const dynamic = 'force-dynamic';
 
 import { proposalService } from '@/lib/services/proposal.service';
 import { withProposalAdmin } from '@/lib/utils/auth-middleware';
-import { createServiceRoleClient } from '@/lib/supabase';
 
 /**
  * POST /api/proposals/[id]/approve
@@ -13,21 +12,14 @@ import { createServiceRoleClient } from '@/lib/supabase';
 export const POST = withProposalAdmin(async (
   request: NextRequest,
   { params }: { params: { id: string } },
-  user
+  user,
+  role,
+  userId
 ) => {
   try {
     const proposalId = params.id;
 
-    // Resolve auth user → users.id for the approved_by foreign key
-    const supabase = createServiceRoleClient();
-    const { data: userRecord } = await supabase
-      .from('users')
-      .select('id')
-      .eq('auth_id', user.id)
-      .single();
-
-    const userId = userRecord?.id ?? null;
-
+    // userId is the resolved public.users.id (approved_by foreign key target).
     await proposalService.approveProposal(proposalId, userId);
 
     return NextResponse.json({

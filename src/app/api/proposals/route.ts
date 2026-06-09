@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 import { proposalService } from '@/lib/services/proposal.service';
 import { submitProposalSchema } from '@/lib/validators/index';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
-import { requireAuth } from '@/lib/utils/auth-middleware';
+import { requireAuth, requireEventAdmin } from '@/lib/utils/auth-middleware';
 
 /**
  * POST /api/proposals
@@ -89,10 +89,21 @@ export async function GET(request: NextRequest) {
 
     let proposals;
     if (eventId) {
-      // Per-event listing is public (proposals are visible per event RLS).
-      proposals = await proposalService.getProposalsByEventId(eventId, status);
+      // Proposals carry submitter PII (email, wallets). Only event admins may
+      // list them; the response includes PII only for verified admins.
+      const auth = await requireEventAdmin(request, eventId);
+      if (!auth.success) {
+        return NextResponse.json(
+          { error: auth.error || 'Admin access required' },
+          { status: 403 }
+        );
+      }
+      proposals = await proposalService.getProposalsByEventId(eventId, status, {
+        includePII: true,
+      });
     } else {
-      // Cross-event listing is admin-only — require an authenticated user.
+      // Cross-event listing is scoped to the events the caller administers,
+      // so one user can't enumerate PII for events they don't run.
       const auth = await requireAuth(request);
       if (!auth.success) {
         return NextResponse.json(
@@ -100,7 +111,7 @@ export async function GET(request: NextRequest) {
           { status: 401 }
         );
       }
-      proposals = await proposalService.getAllProposals(status);
+      proposals = await proposalService.getProposalsForAdminUser(auth.userId!, status);
     }
 
     return NextResponse.json({

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 // Force this route to be dynamic (not pre-rendered during build)
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,21 @@ export async function POST(
 ) {
   try {
     const eventId = params.id;
+
+    // Rate-limit per IP+event to blunt invite-code brute forcing.
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const { allowed } = await checkRateLimit(
+      `ratelimit:invite_verify:${eventId}:${ip}`,
+      RATE_LIMITS.INVITE_VALIDATION.limit,
+      RATE_LIMITS.INVITE_VALIDATION.window
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many attempts. Please try again shortly.' },
+        { status: 429 }
+      );
+    }
+
     const { code } = await request.json();
 
     if (!code) {
