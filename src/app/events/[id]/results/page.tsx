@@ -18,6 +18,7 @@ import {
 } from '@/components/schematic';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
+import { AllocationPie, SelectionPie } from '@/components/charts';
 
 export const dynamic = 'force-dynamic';
 
@@ -274,6 +275,12 @@ function BinaryReport({ results }: { results: any }) {
             first one that didn&apos;t make the cut.
           </p>
 
+          {(selected.length > 0 || notSelected.length > 0) && (
+            <div className="mt-4">
+              <SelectionPie selected={selected.length} notSelected={notSelected.length} />
+            </div>
+          )}
+
           <hr className="ink-rule" />
           <SpecRow label="Selected" value={selected.length} />
           <SpecRow label="Not selected" value={notSelected.length} />
@@ -372,6 +379,12 @@ function ProportionalReport({ results }: { results: any }) {
             summarizes how concentrated the result is — 0 means perfectly
             even, 1 means everything went to one option.
           </p>
+
+          {totalAllocated > 0 && (
+            <div className="mt-4">
+              <AllocationPie data={distributions} symbol={results.resource_symbol} />
+            </div>
+          )}
 
           <hr className="ink-rule" />
           <SpecRow label="Pool" value={`${Number(totalPool).toLocaleString()} ${results.resource_symbol ?? ''}`.trim()} />
