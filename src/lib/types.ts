@@ -181,11 +181,15 @@ export interface OptionWithVotes {
   option_id: string;
   title: string;
   votes: number;
+  /** Raw credits allocated to this option across all ballots. */
+  total_credits?: number;
 }
 
 export interface BinaryOptionResult extends OptionWithVotes {
   rank: number;
   selected: boolean;
+  /** Share of total quadratic votes, 0–100. */
+  percentage: number;
 }
 
 export interface Distribution {

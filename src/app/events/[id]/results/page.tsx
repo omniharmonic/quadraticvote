@@ -112,7 +112,12 @@ export default function ResultsPage() {
   const isBinary = framework?.framework_type === 'binary_selection';
   const isClosed = new Date(event.endTime) < new Date();
   const totalVoters = analytics?.voting?.total_votes ?? results?.participation?.total_voters ?? 0;
-  const totalCredits = analytics?.voting?.total_credits_used ?? 0;
+  // The results endpoint reports the true credits total; the analytics
+  // endpoint only exposes avg/max/min, so prefer participation here.
+  const totalCredits =
+    results?.participation?.total_credits_allocated ??
+    analytics?.voting?.total_credits_used ??
+    0;
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -480,13 +485,15 @@ function ExportPanel({
   const [busy, setBusy] = useState(false);
   const showGnosis = payoutTokenType === 'native' || payoutTokenType === 'erc20';
 
-  const filename = (kind: 'standard' | 'gnosis') => {
+  const filename = (kind: 'standard' | 'gnosis' | 'json') => {
     const slug = (eventTitle || 'event')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 60) || eventId;
-    return kind === 'gnosis' ? `safe-airdrop-${slug}.csv` : `results-${slug}.csv`;
+    if (kind === 'gnosis') return `safe-airdrop-${slug}.csv`;
+    if (kind === 'json') return `results-${slug}.json`;
+    return `results-${slug}.csv`;
   };
 
   const downloadGnosis = async () => {
@@ -532,6 +539,13 @@ function ExportPanel({
         className="btn-paper"
       >
         ↓ CSV · standard
+      </a>
+      <a
+        href={`/api/events/${eventId}/export?format=json`}
+        download={filename('json')}
+        className="btn-paper"
+      >
+        ↓ JSON · full data
       </a>
       {showGnosis && (
         <>

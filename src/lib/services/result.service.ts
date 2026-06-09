@@ -51,20 +51,23 @@ export class ResultService {
       .select('*')
       .eq('event_id', eventId);
 
-    // 3. Aggregate quadratic votes
-    const voteTotals = aggregateVotes((allVotes || []).map(v => ({ allocations: v.allocations as Record<string, number> })));
-    
+    // 3. Aggregate quadratic votes + raw credits per option
+    const ballots = (allVotes || []).map(v => ({ allocations: v.allocations as Record<string, number> }));
+    const voteTotals = aggregateVotes(ballots);
+    const creditTotals = this.aggregateCredits(ballots);
+
     // 4. Calculate results based on framework (field is snake_case in DB)
     const framework = (event.decision_framework as any)?.framework_type;
     const config = (event.decision_framework as any)?.config;
-    
+
     let frameworkResults: BinaryResults | ProportionalResults;
-    
+
     if (framework === 'binary_selection') {
       frameworkResults = this.calculateBinaryResults(
         config,
         voteTotals,
-        eventOptions as Option[]
+        eventOptions as Option[],
+        creditTotals
       );
     } else if (framework === 'proportional_distribution') {
       frameworkResults = this.calculateProportionalResults(
@@ -98,17 +101,20 @@ export class ResultService {
   private calculateBinaryResults(
     config: BinaryDecisionConfig,
     voteTotals: Record<string, number>,
-    eventOptions: Option[]
+    eventOptions: Option[],
+    creditTotals: Record<string, number> = {}
   ): BinaryResults {
     // Convert vote totals to array with option details
     const optionsWithVotes: OptionWithVotes[] = eventOptions.map(opt => ({
       option_id: opt.id,
       title: opt.title,
       votes: voteTotals[opt.id] || 0,
+      total_credits: creditTotals[opt.id] || 0,
     }));
-    
+
     // Sort by votes descending
     const sorted = optionsWithVotes.sort((a, b) => b.votes - a.votes);
+    const grandTotalVotes = sorted.reduce((sum, o) => sum + o.votes, 0);
     
     // Determine selected options based on threshold mode
     let selectedOptionIds: Set<string>;
@@ -150,11 +156,12 @@ export class ResultService {
         throw new Error('Unknown threshold mode');
     }
     
-    // Add selection status and rank to each option
+    // Add selection status, rank, and vote share to each option
     const results: BinaryOptionResult[] = sorted.map((opt, index) => ({
       ...opt,
       rank: index + 1,
       selected: selectedOptionIds.has(opt.option_id),
+      percentage: grandTotalVotes > 0 ? (opt.votes / grandTotalVotes) * 100 : 0,
     }));
     
     // Separate selected and not selected
@@ -256,6 +263,23 @@ export class ResultService {
     };
   }
   
+  /**
+   * Sum raw credits allocated to each option across all ballots.
+   * (Quadratic votes are √credits; this keeps the pre-root credits for
+   * reporting/exports.)
+   */
+  private aggregateCredits(
+    ballots: Array<{ allocations: Record<string, number> }>
+  ): Record<string, number> {
+    const totals: Record<string, number> = {};
+    for (const ballot of ballots) {
+      for (const [optionId, credits] of Object.entries(ballot.allocations || {})) {
+        totals[optionId] = (totals[optionId] || 0) + (Number(credits) || 0);
+      }
+    }
+    return totals;
+  }
+
   /**
    * Calculate Gini coefficient (0 = perfect equality, 1 = perfect inequality)
    */
