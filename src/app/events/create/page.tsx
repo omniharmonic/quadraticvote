@@ -37,9 +37,14 @@ interface EventFormData {
   topNCount?: number;
   percentageThreshold?: number;
   absoluteVotesThreshold?: number;
+  tiebreaker?: 'timestamp' | 'alphabetical';
   resourceName?: string;
   resourceSymbol?: string;
   totalPoolAmount?: number;
+  decimalPlaces?: number;
+  minimumAllocationEnabled?: boolean;
+  minimumAllocationPercentage?: number;
+  zeroVoteHandling?: 'exclude' | 'distribute_equally';
   // Optional onchain payout (Gnosis Safe Airdrop CSV export). Off by default.
   payoutEnabled?: boolean;
   payoutTokenType?: 'native' | 'erc20';
@@ -90,6 +95,11 @@ export default function CreateEventPage() {
     endTime: '',
     framework: null,
     optionMode: null,
+    tiebreaker: 'timestamp',
+    decimalPlaces: 2,
+    minimumAllocationEnabled: false,
+    minimumAllocationPercentage: 5,
+    zeroVoteHandling: 'exclude',
     creditsPerVoter: 100,
     showResultsDuringVoting: false,
     showResultsAfterClose: true,
@@ -188,8 +198,8 @@ export default function CreateEventPage() {
               threshold_mode: formData.thresholdMode!,
               top_n_count: formData.thresholdMode === 'top_n' ? formData.topNCount : undefined,
               percentage_threshold: formData.thresholdMode === 'percentage' ? formData.percentageThreshold : undefined,
-              absolute_votes_threshold: formData.thresholdMode === 'absolute_votes' ? formData.absoluteVotesThreshold : undefined,
-              tiebreaker: 'timestamp' as const,
+              absolute_vote_threshold: formData.thresholdMode === 'absolute_votes' ? formData.absoluteVotesThreshold : undefined,
+              tiebreaker: formData.tiebreaker ?? 'timestamp',
             },
           }
         : {
@@ -198,6 +208,12 @@ export default function CreateEventPage() {
               resource_name: formData.resourceName!,
               resource_symbol: formData.resourceSymbol!,
               total_pool_amount: formData.totalPoolAmount!,
+              decimal_places: formData.decimalPlaces ?? 2,
+              minimum_allocation_enabled: !!formData.minimumAllocationEnabled,
+              ...(formData.minimumAllocationEnabled && formData.minimumAllocationPercentage != null
+                ? { minimum_allocation_percentage: formData.minimumAllocationPercentage }
+                : {}),
+              zero_vote_handling: formData.zeroVoteHandling ?? 'exclude',
               ...(formData.payoutEnabled
                 ? {
                     payout_token_type: formData.payoutTokenType ?? 'native',
@@ -703,6 +719,27 @@ export default function CreateEventPage() {
                       </p>
                     </div>
                   )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tiebreaker">Tie-breaking</Label>
+                    <Select
+                      value={formData.tiebreaker ?? 'timestamp'}
+                      onValueChange={(value) =>
+                        updateFormData({ tiebreaker: value as 'timestamp' | 'alphabetical' })
+                      }
+                    >
+                      <SelectTrigger id="tiebreaker">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="timestamp">Earliest option wins</SelectItem>
+                        <SelectItem value="alphabetical">Alphabetical (A–Z)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-gray-500">
+                      How to order options that finish with exactly the same number of votes.
+                    </p>
+                  </div>
                 </>
               ) : (
                 <>
@@ -741,6 +778,75 @@ export default function CreateEventPage() {
                     />
                     <p className="text-sm text-gray-500">
                       This amount will be distributed proportionally across options
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="decimalPlaces">Decimal Places</Label>
+                    <Input
+                      id="decimalPlaces"
+                      name="decimalPlaces"
+                      type="number"
+                      min="0"
+                      max="8"
+                      value={formData.decimalPlaces ?? 2}
+                      onChange={(e) => updateFormData({ decimalPlaces: parseInt(e.target.value) })}
+                    />
+                    <p className="text-sm text-gray-500">
+                      How many decimals to show when displaying allocations (0–8).
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 rounded-md border border-ink/15 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label htmlFor="minAlloc" className="cursor-pointer">
+                        Minimum allocation floor
+                      </Label>
+                      <Switch
+                        id="minAlloc"
+                        checked={!!formData.minimumAllocationEnabled}
+                        onCheckedChange={(v) => updateFormData({ minimumAllocationEnabled: v })}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      Guarantee every option that earns at least one vote receives a minimum
+                      share of the pool. Remaining options are scaled down proportionally.
+                    </p>
+                    {formData.minimumAllocationEnabled && (
+                      <div className="space-y-2">
+                        <Label htmlFor="minAllocPct">Minimum share (% of pool)</Label>
+                        <Input
+                          id="minAllocPct"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={formData.minimumAllocationPercentage ?? 5}
+                          onChange={(e) =>
+                            updateFormData({ minimumAllocationPercentage: parseFloat(e.target.value) })
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="zeroVote">Options that receive no votes</Label>
+                    <Select
+                      value={formData.zeroVoteHandling ?? 'exclude'}
+                      onValueChange={(value) =>
+                        updateFormData({ zeroVoteHandling: value as 'exclude' | 'distribute_equally' })
+                      }
+                    >
+                      <SelectTrigger id="zeroVote">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="exclude">Get nothing (pool may be under-allocated)</SelectItem>
+                        <SelectItem value="distribute_equally">Split the pool equally if nobody votes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-gray-500">
+                      What happens to an option (or the whole pool) when there are no votes.
                     </p>
                   </div>
 

@@ -104,16 +104,26 @@ export class ResultService {
     eventOptions: Option[],
     creditTotals: Record<string, number> = {}
   ): BinaryResults {
-    // Convert vote totals to array with option details
-    const optionsWithVotes: OptionWithVotes[] = eventOptions.map(opt => ({
-      option_id: opt.id,
-      title: opt.title,
-      votes: voteTotals[opt.id] || 0,
-      total_credits: creditTotals[opt.id] || 0,
-    }));
+    // Convert vote totals to array with option details. Capture position so
+    // ties can fall back to creation order for the 'timestamp' tiebreaker.
+    const optionsWithVotes: Array<OptionWithVotes & { position: number }> = eventOptions.map(
+      (opt, idx) => ({
+        option_id: opt.id,
+        title: opt.title,
+        votes: voteTotals[opt.id] || 0,
+        total_credits: creditTotals[opt.id] || 0,
+        position: (opt as any).position ?? idx,
+      })
+    );
 
-    // Sort by votes descending
-    const sorted = optionsWithVotes.sort((a, b) => b.votes - a.votes);
+    // Sort by votes descending, breaking exact ties per the configured rule:
+    // 'alphabetical' by title, otherwise ('timestamp') by creation order.
+    const tiebreaker = config.tiebreaker ?? 'timestamp';
+    const sorted = optionsWithVotes.sort((a, b) => {
+      if (b.votes !== a.votes) return b.votes - a.votes;
+      if (tiebreaker === 'alphabetical') return a.title.localeCompare(b.title);
+      return a.position - b.position;
+    });
     const grandTotalVotes = sorted.reduce((sum, o) => sum + o.votes, 0);
     
     // Determine selected options based on threshold mode
@@ -190,7 +200,11 @@ export class ResultService {
     const totalVotes = Object.values(voteTotals).reduce((sum, v) => sum + v, 0);
     
     if (totalVotes === 0) {
-      // No votes yet, return zero distribution
+      // No votes yet. With 'distribute_equally', split the pool evenly so it's
+      // fully allocated; otherwise ('exclude', default) everyone gets zero.
+      const equalSplit =
+        config.zero_vote_handling === 'distribute_equally' && eventOptions.length > 0;
+      const each = equalSplit ? config.total_pool_amount / eventOptions.length : 0;
       return {
         framework_type: 'proportional_distribution',
         resource_name: config.resource_name,
@@ -200,10 +214,10 @@ export class ResultService {
           option_id: opt.id,
           title: opt.title,
           votes: 0,
-          allocation_amount: 0,
-          allocation_percentage: 0,
+          allocation_amount: each,
+          allocation_percentage: equalSplit ? 100 / eventOptions.length : 0,
         })),
-        total_allocated: 0,
+        total_allocated: equalSplit ? config.total_pool_amount : 0,
         gini_coefficient: 0,
       };
     }
