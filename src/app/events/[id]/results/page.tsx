@@ -210,6 +210,14 @@ function BinaryReport({ results }: { results: any }) {
   const margin = results.selection_margin;
   const all = [...selected, ...notSelected];
   const max = Math.max(...all.map((o: any) => o.votes), 1);
+  // Wasted credits: raw credits voters spent on options that didn't get
+  // selected — a measure of how much support went to "losing" options.
+  const wastedCredits = notSelected.reduce(
+    (sum: number, o: any) => sum + (o.total_credits ?? 0),
+    0
+  );
+  const totalCreditsAll = all.reduce((sum: number, o: any) => sum + (o.total_credits ?? 0), 0);
+  const wastedPct = totalCreditsAll > 0 ? (wastedCredits / totalCreditsAll) * 100 : 0;
 
   return (
     <>
@@ -288,6 +296,17 @@ function BinaryReport({ results }: { results: any }) {
             label="Margin"
             value={margin !== undefined ? margin.toFixed(2) : '—'}
           />
+          <SpecRow
+            label="Wasted credits"
+            value={
+              <span title="Credits spent on options that were not selected">
+                {wastedCredits.toLocaleString()}{' '}
+                <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 ml-1">
+                  {wastedPct.toFixed(0)}%
+                </span>
+              </span>
+            }
+          />
         </SchematicCard>
       </div>
     </>
@@ -300,6 +319,12 @@ function ProportionalReport({ results }: { results: any }) {
   const totalPool = results.total_pool;
   const totalAllocated = results.total_allocated ?? 0;
   const gini = results.gini_coefficient ?? 0;
+  // Concentration: how much of what was allocated landed in the top 3 options.
+  const top3 = [...distributions]
+    .sort((a: any, b: any) => b.allocation_amount - a.allocation_amount)
+    .slice(0, 3)
+    .reduce((sum: number, d: any) => sum + (d.allocation_amount ?? 0), 0);
+  const top3Pct = totalAllocated > 0 ? (top3 / totalAllocated) * 100 : 0;
 
   return (
     <>
@@ -403,6 +428,16 @@ function ProportionalReport({ results }: { results: any }) {
               </span>
             }
           />
+          {distributions.length > 3 && (
+            <SpecRow
+              label="Top 3 share"
+              value={
+                <span title="Share of the allocated pool held by the three largest options">
+                  {top3Pct.toFixed(0)}%
+                </span>
+              }
+            />
+          )}
         </SchematicCard>
       </div>
     </>
