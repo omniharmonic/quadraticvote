@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceRoleClient } from '@/lib/supabase';
+import { lazyServiceRoleClient } from '@/lib/supabase';
 import { withEventAdmin } from '@/lib/utils/auth-middleware';
 
-const supabase = createServiceRoleClient();
+const supabase = lazyServiceRoleClient();
 
 export const dynamic = 'force-dynamic';
 

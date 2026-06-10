@@ -1,7 +1,7 @@
 import 'server-only';
-import { createServiceRoleClient } from '@/lib/supabase';
+import { createServiceRoleClient, lazyServiceRoleClient } from '@/lib/supabase';
 
-const supabase = createServiceRoleClient();
+const supabase = lazyServiceRoleClient();
 import { generateInviteCode } from '@/lib/utils/auth';
 import { sendAdminInvite } from '@/lib/services/email.service';
 import type { User } from '@supabase/supabase-js';

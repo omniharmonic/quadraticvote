@@ -1,7 +1,7 @@
 import 'server-only';
-import { createServiceRoleClient } from '@/lib/supabase';
+import { lazyServiceRoleClient } from '@/lib/supabase';
 
-const supabase = createServiceRoleClient();
+const supabase = lazyServiceRoleClient();
 
 /**
  * Non-sensitive proposal fields, safe to expose to any caller.
