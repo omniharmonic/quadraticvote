@@ -1,9 +1,13 @@
 import 'server-only';
-import { createServiceRoleClient } from '@/lib/supabase';
+import { lazyServiceRoleClient } from '@/lib/supabase';
 
-const supabase = createServiceRoleClient();
+const supabase = lazyServiceRoleClient();
 
-function mapProposalRow(row: any): any {
+/**
+ * Non-sensitive proposal fields, safe to expose to any caller.
+ * Excludes submitter email/wallets and the (email-derived) anonymous id.
+ */
+function toPublicProposal(row: any): any {
   if (!row) return row;
   return {
     id: row.id,
@@ -11,21 +15,32 @@ function mapProposalRow(row: any): any {
     title: row.title,
     description: row.description,
     imageUrl: row.image_url,
-    submitterEmail: row.submitter_email,
-    submitterWallet: row.submitter_wallet,
-    payoutWallet: row.payout_wallet,
-    submitterAnonymousId: row.submitter_anonymous_id,
     status: row.status,
     submittedAt: row.submitted_at,
     approvedAt: row.approved_at,
-    approvedBy: row.approved_by,
     rejectedAt: row.rejected_at,
-    rejectedBy: row.rejected_by,
     rejectionReason: row.rejection_reason,
     convertedToOptionId: row.converted_to_option_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     event: row.event,
+  };
+}
+
+/**
+ * Full proposal incl. submitter PII. Only return this to verified admins of
+ * the proposal's event — never on a public endpoint.
+ */
+function toAdminProposal(row: any): any {
+  if (!row) return row;
+  return {
+    ...toPublicProposal(row),
+    submitterEmail: row.submitter_email,
+    submitterWallet: row.submitter_wallet,
+    payoutWallet: row.payout_wallet,
+    submitterAnonymousId: row.submitter_anonymous_id,
+    approvedBy: row.approved_by,
+    rejectedBy: row.rejected_by,
   };
 }
 import { hashString } from '@/lib/utils/auth';
@@ -69,8 +84,11 @@ export class ProposalService {
       await this.validateSubmitter(event.id, input.submitterEmail, input.inviteCode);
     }
 
-    // 3. Generate anonymous ID (used both for the row and for per-user limits)
-    const anonymousId = hashString(input.submitterEmail);
+    // 3. Generate anonymous ID (used both for the row and for per-user limits).
+    // Scope the hash to the event so the same submitter gets DIFFERENT ids
+    // across events — a bare email hash would be a stable, reversible
+    // cross-event correlation key.
+    const anonymousId = hashString(`${input.eventId}:${input.submitterEmail}`);
 
     // 4. Enforce maxProposalsPerUser, if configured. Rejected and merged
     // proposals don't count against the limit — only live ones do.
@@ -125,11 +143,21 @@ export class ProposalService {
       await this.convertSingleProposalToOption(proposal);
     }
 
-    // 7. Update invite tracking if applicable (simplified)
+    // 7. Update invite tracking if applicable. Increment the running count
+    // rather than clobbering it to 1 on every submission.
     if (input.inviteCode) {
+      const { data: inviteRow } = await supabase
+        .from('invites')
+        .select('proposals_submitted')
+        .eq('event_id', input.eventId)
+        .eq('code', input.inviteCode)
+        .maybeSingle();
+
+      const current = (inviteRow?.proposals_submitted as number) ?? 0;
       await supabase
         .from('invites')
-        .update({ proposals_submitted: 1 })
+        .update({ proposals_submitted: current + 1 })
+        .eq('event_id', input.eventId)
         .eq('code', input.inviteCode);
     }
 
@@ -266,7 +294,8 @@ export class ProposalService {
    */
   async getProposalsByEventId(
     eventId: string,
-    status?: string
+    status?: string,
+    opts: { includePII?: boolean } = {}
   ): Promise<any[]> {
     let query = supabase
       .from('proposals')
@@ -279,16 +308,32 @@ export class ProposalService {
 
     const { data: result, error } = await query.order('submitted_at', { ascending: false });
     if (error) throw new Error(`Failed to fetch proposals: ${error.message}`);
-    return (result || []).map(mapProposalRow);
+    const map = opts.includePII ? toAdminProposal : toPublicProposal;
+    return (result || []).map(map);
   }
 
   /**
-   * Get all proposals across all events (for admin)
+   * Get proposals across every event the given admin user administers.
+   *
+   * Scoped to the caller's own events so one authenticated user can't
+   * enumerate submitter PII for events they don't run. Returns the full
+   * admin shape (with PII) for those — and only those — events.
    */
-  async getAllProposals(status?: string): Promise<any[]> {
+  async getProposalsForAdminUser(userId: string, status?: string): Promise<any[]> {
+    const { data: adminRows, error: adminError } = await supabase
+      .from('event_admins')
+      .select('event_id')
+      .eq('user_id', userId);
+
+    if (adminError) throw new Error(`Failed to resolve admin events: ${adminError.message}`);
+
+    const eventIds = (adminRows || []).map((r) => r.event_id);
+    if (eventIds.length === 0) return [];
+
     let query = supabase
       .from('proposals')
-      .select('*, event:events(title)');
+      .select('*, event:events(title)')
+      .in('event_id', eventIds);
 
     if (status) {
       query = query.eq('status', status);
@@ -296,7 +341,7 @@ export class ProposalService {
 
     const { data: result, error } = await query.order('submitted_at', { ascending: false });
     if (error) throw new Error(`Failed to fetch proposals: ${error.message}`);
-    return (result || []).map(mapProposalRow);
+    return (result || []).map(toAdminProposal);
   }
   
   /**

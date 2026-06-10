@@ -107,6 +107,25 @@ export default function ProposalSubmissionPage() {
   const acceptsProposals =
     event.optionMode === 'community_proposals' || event.optionMode === 'hybrid';
 
+  // Framework-adapted framing (PRD §2.1): binary events are competitive
+  // (top N selected), proportional events are collaborative (all funded).
+  const framework = event.decisionFramework;
+  const isBinary = framework?.framework_type === 'binary_selection';
+  const topN = framework?.config?.top_n_count;
+  const resourceName = framework?.config?.resource_name ?? 'the pool';
+  const resourceSymbol = framework?.config?.resource_symbol ?? '';
+  const poolAmount = framework?.config?.total_pool_amount;
+  const proposeHeadline = isBinary
+    ? 'Put your idea up for selection.'
+    : 'Propose where the resources should go.';
+  const proposeLede = isBinary
+    ? topN
+      ? `The community will pick the top ${topN}. Make the case for yours — be clear, specific, and concrete.`
+      : 'The community will choose which proposals are selected. Make the case for yours.'
+    : poolAmount
+      ? `Approved proposals share ${resourceSymbol}${Number(poolAmount).toLocaleString()} of ${resourceName}, divided by the community's votes. Tell them why yours deserves a slice.`
+      : `Approved proposals receive a share of ${resourceName} based on community votes. Tell them why yours deserves a slice.`;
+
   // If proposals are invite-only and no code is on the URL, prompt for it
   // up-front instead of letting the form fail on submit. The invite-code
   // gate mirrors the vote page's UX so voters and proposers see the same
@@ -170,14 +189,12 @@ export default function ProposalSubmissionPage() {
       <section className="relative overflow-hidden border-b border-ink/15">
         <GraphPaper aria-hidden className="absolute inset-0 opacity-50" />
         <div className="relative mx-auto max-w-3xl px-5 md:px-8 py-12 md:py-16">
-          <SectionLabel>Submit a proposal</SectionLabel>
+          <SectionLabel>{isBinary ? 'Submit for selection' : 'Submit for funding'}</SectionLabel>
           <h1 className="mt-3 font-display text-[40px] sm:text-[52px] leading-[1.02] tracking-[-0.018em] text-ink anim-ink text-balance">
-            Add a card to the slate.
+            {proposeHeadline}
           </h1>
           <p className="mt-5 max-w-2xl font-serif text-[17px] text-ink-2 leading-snug anim-ink [animation-delay:120ms]">
-            Tell the community what you want them to consider. Be clear,
-            be specific, and include a wallet if there&apos;s a payout. The
-            organizer will review before it goes on the ballot.
+            {proposeLede} The organizer will review before it goes on the ballot.
           </p>
         </div>
       </section>
@@ -230,7 +247,7 @@ export default function ProposalSubmissionPage() {
           <SchematicCard className="p-6 md:p-7 space-y-5">
             <SectionLabel number={2}>About you</SectionLabel>
 
-            <FieldRow label="Your email" htmlFor="email" hint={<span>Hashed before storing</span>}>
+            <FieldRow label="Your email" htmlFor="email" hint={<span>Private — only the organizer sees it</span>}>
               <input
                 id="email"
                 name="submitterEmail"

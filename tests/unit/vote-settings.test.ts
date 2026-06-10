@@ -6,10 +6,10 @@ import { describe, it, expect } from 'vitest';
 import { vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/supabase', () => ({
-  createServiceRoleClient: () => ({
-    // Methods on the real client aren't called by the pure helpers we test,
-    // so a no-op object is sufficient.
-  }),
+  // Methods on the real client aren't called by the pure helpers we test,
+  // so no-op objects are sufficient.
+  createServiceRoleClient: () => ({}),
+  lazyServiceRoleClient: () => ({}),
 }));
 
 import {

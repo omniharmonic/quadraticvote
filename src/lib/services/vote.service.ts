@@ -1,8 +1,8 @@
 import 'server-only';
 import { createHash } from 'crypto';
-import { createServiceRoleClient } from '@/lib/supabase';
+import { lazyServiceRoleClient } from '@/lib/supabase';
 
-const supabase = createServiceRoleClient();
+const supabase = lazyServiceRoleClient();
 
 /**
  * Stable identifier for an anonymous voter on a public event. Used both
@@ -212,6 +212,13 @@ export class VoteService {
 
     if (voteError) {
       throw new Error(`Failed to submit vote: ${voteError.message}`);
+    }
+
+    // 9.1. If this ballot landed after close (allowLateSubmissions), the
+    // frozen result snapshot is stale — drop it so the next read re-freezes.
+    if (new Date() > new Date(event.end_time)) {
+      const { resultService } = await import('@/lib/services/result.service');
+      await resultService.invalidateSnapshot(eventId);
     }
 
     // 10. Update invite tracking (skip for virtual invites).

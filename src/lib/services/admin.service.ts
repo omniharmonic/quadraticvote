@@ -1,7 +1,7 @@
 import 'server-only';
-import { createServiceRoleClient } from '@/lib/supabase';
+import { createServiceRoleClient, lazyServiceRoleClient } from '@/lib/supabase';
 
-const supabase = createServiceRoleClient();
+const supabase = lazyServiceRoleClient();
 import { generateInviteCode } from '@/lib/utils/auth';
 import { sendAdminInvite } from '@/lib/services/email.service';
 import type { User } from '@supabase/supabase-js';
@@ -346,11 +346,15 @@ export class AdminService {
   /**
    * Get pending invitations for an event
    */
-  async getEventInvitations(eventId: string): Promise<AdminInvitation[]> {
+  async getEventInvitations(
+    eventId: string
+  ): Promise<Array<Omit<AdminInvitation, 'invite_code'>>> {
     try {
+      // Deliberately omit invite_code — it is a bearer secret delivered by
+      // email and must never be returned through the API.
       const { data, error } = await supabase
         .from('admin_invitations')
-        .select('*')
+        .select('id, event_id, email, role, invited_by, accepted_at, accepted_by, expires_at, created_at')
         .eq('event_id', eventId)
         .is('accepted_at', null)
         .order('created_at', { ascending: false });
@@ -360,7 +364,7 @@ export class AdminService {
         return [];
       }
 
-      return data;
+      return data as any;
     } catch (error) {
       console.error('Error fetching invitations:', error);
       return [];
@@ -374,7 +378,7 @@ export class AdminService {
   async verifyEventAccess(
     userToken: string,
     eventId: string
-  ): Promise<{ isAuthorized: boolean; user?: User; role?: string; error?: string }> {
+  ): Promise<{ isAuthorized: boolean; user?: User; userId?: string; role?: string; error?: string }> {
     try {
       // Verify JWT token
       const serviceRoleClient = createServiceRoleClient();
@@ -404,6 +408,7 @@ export class AdminService {
       return {
         isAuthorized: true,
         user,
+        userId,
         role: role || 'admin'
       };
     } catch (error) {

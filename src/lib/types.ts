@@ -19,6 +19,10 @@ export interface ProportionalDistributionConfig {
   minimum_allocation_enabled?: boolean;
   minimum_allocation_percentage?: number;
   decimal_places?: number;
+  // How to treat options with zero votes. 'exclude' leaves them at 0 (pool may
+  // be under-allocated); 'distribute_equally' splits the pool evenly when no
+  // option received any votes at all.
+  zero_vote_handling?: 'exclude' | 'distribute_equally';
   // Optional onchain payout config — when set, the results page shows a
   // Gnosis Safe Airdrop CSV export. `payout_token_type === 'native'` means
   // the chain's native asset (ETH, xDAI, etc.) and ignores the address.
@@ -181,11 +185,15 @@ export interface OptionWithVotes {
   option_id: string;
   title: string;
   votes: number;
+  /** Raw credits allocated to this option across all ballots. */
+  total_credits?: number;
 }
 
 export interface BinaryOptionResult extends OptionWithVotes {
   rank: number;
   selected: boolean;
+  /** Share of total quadratic votes, 0–100. */
+  percentage: number;
 }
 
 export interface Distribution {

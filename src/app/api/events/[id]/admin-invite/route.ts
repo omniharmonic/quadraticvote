@@ -9,7 +9,8 @@ export const POST = withEventAdmin(async (
   request: NextRequest,
   { params }: { params: { id: string } },
   user,
-  role
+  role,
+  userId
 ) => {
   try {
     const eventId = params.id;
@@ -30,7 +31,9 @@ export const POST = withEventAdmin(async (
       );
     }
 
-    const result = await adminService.inviteAdmin(eventId, email, inviteRole, user.id);
+    // Pass the resolved public.users.id — inviteAdmin checks the inviter's
+    // role via event_admins.user_id, which references public.users.id.
+    const result = await adminService.inviteAdmin(eventId, email, inviteRole, userId);
 
     if (!result.success) {
       return NextResponse.json(
@@ -39,9 +42,11 @@ export const POST = withEventAdmin(async (
       );
     }
 
+    // Note: inviteCode is intentionally NOT returned. The code is a bearer
+    // secret delivered to the invitee by email; echoing it in the API
+    // response would leak it into logs, proxies, and the browser.
     return NextResponse.json({
       success: true,
-      inviteCode: result.inviteCode,
       message: 'Admin invitation sent successfully'
     });
   } catch (error) {

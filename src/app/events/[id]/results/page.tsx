@@ -18,6 +18,13 @@ import {
 } from '@/components/schematic';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
+import {
+  AllocationPie,
+  SelectionPie,
+  VotesBarChart,
+  AllocationWaterfall,
+  VoterClusterScatter,
+} from '@/components/charts';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,7 +119,12 @@ export default function ResultsPage() {
   const isBinary = framework?.framework_type === 'binary_selection';
   const isClosed = new Date(event.endTime) < new Date();
   const totalVoters = analytics?.voting?.total_votes ?? results?.participation?.total_voters ?? 0;
-  const totalCredits = analytics?.voting?.total_credits_used ?? 0;
+  // The results endpoint reports the true credits total; the analytics
+  // endpoint only exposes avg/max/min, so prefer participation here.
+  const totalCredits =
+    results?.participation?.total_credits_allocated ??
+    analytics?.voting?.total_credits_used ??
+    0;
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -172,6 +184,29 @@ export default function ResultsPage() {
           <ProportionalReport results={results.results} />
         )}
 
+        {/* Voter coalitions — admin-only data; renders when present */}
+        {analytics?.voter_clusters?.length > 2 && (
+          <SchematicCard className="p-7 md:p-9 mt-10">
+            <div className="flex items-baseline justify-between">
+              <SectionLabel number={2}>Voter coalitions</SectionLabel>
+              <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+                admin view
+              </span>
+            </div>
+            <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
+              Who voted alike.
+            </h2>
+            <p className="mt-2 font-serif text-[15px] text-ink-2 leading-snug max-w-2xl">
+              Each dot is a ballot, placed by how its credits were split and
+              colored by coalition. Dots near each other allocated similarly;
+              dot size reflects total credits spent.
+            </p>
+            <div className="mt-5">
+              <VoterClusterScatter points={analytics.voter_clusters} />
+            </div>
+          </SchematicCard>
+        )}
+
         {/* Participation chart */}
         {analytics?.participation_over_time?.length > 0 && (
           <SchematicCard className="p-7 md:p-9 mt-10">
@@ -204,6 +239,14 @@ function BinaryReport({ results }: { results: any }) {
   const margin = results.selection_margin;
   const all = [...selected, ...notSelected];
   const max = Math.max(...all.map((o: any) => o.votes), 1);
+  // Wasted credits: raw credits voters spent on options that didn't get
+  // selected — a measure of how much support went to "losing" options.
+  const wastedCredits = notSelected.reduce(
+    (sum: number, o: any) => sum + (o.total_credits ?? 0),
+    0
+  );
+  const totalCreditsAll = all.reduce((sum: number, o: any) => sum + (o.total_credits ?? 0), 0);
+  const wastedPct = totalCreditsAll > 0 ? (wastedCredits / totalCreditsAll) * 100 : 0;
 
   return (
     <>
@@ -218,6 +261,23 @@ function BinaryReport({ results }: { results: any }) {
           <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
             These options were selected.
           </h2>
+
+          {all.length > 0 && (
+            <div className="mt-6">
+              <VotesBarChart
+                data={all.map((o: any) => ({
+                  title: o.title,
+                  votes: o.votes,
+                  selected: o.selected,
+                }))}
+                cutoff={
+                  selected.length > 0
+                    ? Math.min(...selected.map((o: any) => o.votes))
+                    : undefined
+                }
+              />
+            </div>
+          )}
 
           <ul className="mt-6 divide-y divide-ink/12">
             {all.map((opt: any, i: number) => (
@@ -269,12 +329,29 @@ function BinaryReport({ results }: { results: any }) {
             first one that didn&apos;t make the cut.
           </p>
 
+          {(selected.length > 0 || notSelected.length > 0) && (
+            <div className="mt-4">
+              <SelectionPie selected={selected.length} notSelected={notSelected.length} />
+            </div>
+          )}
+
           <hr className="ink-rule" />
           <SpecRow label="Selected" value={selected.length} />
           <SpecRow label="Not selected" value={notSelected.length} />
           <SpecRow
             label="Margin"
             value={margin !== undefined ? margin.toFixed(2) : '—'}
+          />
+          <SpecRow
+            label="Wasted credits"
+            value={
+              <span title="Credits spent on options that were not selected">
+                {wastedCredits.toLocaleString()}{' '}
+                <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3 ml-1">
+                  {wastedPct.toFixed(0)}%
+                </span>
+              </span>
+            }
           />
         </SchematicCard>
       </div>
@@ -288,6 +365,12 @@ function ProportionalReport({ results }: { results: any }) {
   const totalPool = results.total_pool;
   const totalAllocated = results.total_allocated ?? 0;
   const gini = results.gini_coefficient ?? 0;
+  // Concentration: how much of what was allocated landed in the top 3 options.
+  const top3 = [...distributions]
+    .sort((a: any, b: any) => b.allocation_amount - a.allocation_amount)
+    .slice(0, 3)
+    .reduce((sum: number, d: any) => sum + (d.allocation_amount ?? 0), 0);
+  const top3Pct = totalAllocated > 0 ? (top3 / totalAllocated) * 100 : 0;
 
   return (
     <>
@@ -322,6 +405,13 @@ function ProportionalReport({ results }: { results: any }) {
               ))}
             </div>
           </div>
+
+          {/* Waterfall — cumulative drawdown of the pool */}
+          {totalAllocated > 0 && (
+            <div className="mt-6">
+              <AllocationWaterfall data={distributions} symbol={results.resource_symbol} />
+            </div>
+          )}
 
           <ul className="mt-6 divide-y divide-ink/12">
             {distributions.map((d: any, i: number) => (
@@ -368,6 +458,12 @@ function ProportionalReport({ results }: { results: any }) {
             even, 1 means everything went to one option.
           </p>
 
+          {totalAllocated > 0 && (
+            <div className="mt-4">
+              <AllocationPie data={distributions} symbol={results.resource_symbol} />
+            </div>
+          )}
+
           <hr className="ink-rule" />
           <SpecRow label="Pool" value={`${Number(totalPool).toLocaleString()} ${results.resource_symbol ?? ''}`.trim()} />
           <SpecRow
@@ -385,6 +481,16 @@ function ProportionalReport({ results }: { results: any }) {
               </span>
             }
           />
+          {distributions.length > 3 && (
+            <SpecRow
+              label="Top 3 share"
+              value={
+                <span title="Share of the allocated pool held by the three largest options">
+                  {top3Pct.toFixed(0)}%
+                </span>
+              }
+            />
+          )}
         </SchematicCard>
       </div>
     </>
@@ -480,13 +586,15 @@ function ExportPanel({
   const [busy, setBusy] = useState(false);
   const showGnosis = payoutTokenType === 'native' || payoutTokenType === 'erc20';
 
-  const filename = (kind: 'standard' | 'gnosis') => {
+  const filename = (kind: 'standard' | 'gnosis' | 'json') => {
     const slug = (eventTitle || 'event')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 60) || eventId;
-    return kind === 'gnosis' ? `safe-airdrop-${slug}.csv` : `results-${slug}.csv`;
+    if (kind === 'gnosis') return `safe-airdrop-${slug}.csv`;
+    if (kind === 'json') return `results-${slug}.json`;
+    return `results-${slug}.csv`;
   };
 
   const downloadGnosis = async () => {
@@ -532,6 +640,13 @@ function ExportPanel({
         className="btn-paper"
       >
         ↓ CSV · standard
+      </a>
+      <a
+        href={`/api/events/${eventId}/export?format=json`}
+        download={filename('json')}
+        className="btn-paper"
+      >
+        ↓ JSON · full data
       </a>
       {showGnosis && (
         <>

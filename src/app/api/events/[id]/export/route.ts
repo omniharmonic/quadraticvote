@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase';
 import { resultService } from '@/lib/services/result.service';
-import { requireEventAdmin } from '@/lib/utils/auth-middleware';
+import {
+  requireEventAdmin,
+  callerCanAccessPrivateEvent,
+  extractToken,
+} from '@/lib/utils/auth-middleware';
+import { adminService } from '@/lib/services/admin.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,11 +41,55 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
+    // Exports must enforce the same gates as the results endpoint — they
+    // are just results in a different format.
+    //
+    // 1. Private events: admins or invite holders only (404, not 403).
+    if (event.visibility === 'private') {
+      const allowed = await callerCanAccessPrivateEvent(request, eventId);
+      if (!allowed) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      }
+    }
+
+    // 2. Results-visibility toggles apply to non-admin callers.
+    let isAdmin = false;
+    const token = extractToken(request);
+    if (token) {
+      const access = await adminService.verifyEventAccess(token, eventId);
+      isAdmin = access.isAuthorized;
+    }
+    if (!isAdmin) {
+      const closed = new Date() > new Date(event.end_time);
+      if (closed && !event.show_results_after_close) {
+        return NextResponse.json(
+          { error: 'Results are not available for this event' },
+          { status: 403 }
+        );
+      }
+      if (!closed && !event.show_results_during_voting) {
+        return NextResponse.json(
+          { error: 'Results will be published when voting closes' },
+          { status: 403 }
+        );
+      }
+    }
+
     const results = await resultService.getResults(eventId);
 
     if (format === 'standard') {
       const csv = formatStandardCSV(results, event);
       return csvResponse(csv, `results-${eventId}.csv`);
+    }
+
+    if (format === 'json') {
+      const payload = formatResultsJSON(results, event);
+      return new NextResponse(JSON.stringify(payload, null, 2), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Disposition': `attachment; filename="results-${eventId}.json"`,
+        },
+      });
     }
 
     if (format === 'gnosis') {
@@ -108,7 +157,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { error: 'Invalid format. Use ?format=standard or ?format=gnosis' },
+      { error: 'Invalid format. Use ?format=standard, ?format=json, or ?format=gnosis' },
       { status: 400 }
     );
   } catch (error) {
@@ -217,6 +266,60 @@ function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
+/**
+ * Framework-specific JSON export (PRD §4.4). Binary emits selected /
+ * not-selected with rank+margin; proportional emits the distribution with
+ * allocation amounts, the resource definition, and the Gini coefficient.
+ */
+function formatResultsJSON(results: any, event: any): any {
+  const fr = results.results;
+  const framework = results.framework_type;
+  const decisionFramework = event.decision_framework ?? {};
+
+  const base = {
+    event: {
+      id: event.id,
+      title: event.title,
+      decision_framework: decisionFramework,
+    },
+    participation: {
+      total_voters: results.participation?.total_voters ?? 0,
+      total_credits_allocated: results.participation?.total_credits_allocated ?? 0,
+      is_final: results.participation?.is_final ?? false,
+      voting_start: results.participation?.voting_start ?? null,
+      voting_end: results.participation?.voting_end ?? null,
+    },
+    calculated_at: results.calculated_at ?? new Date().toISOString(),
+  };
+
+  if (framework === 'binary_selection') {
+    return {
+      ...base,
+      results: {
+        framework_type: 'binary_selection',
+        threshold_mode: fr?.threshold_mode,
+        selected_options: fr?.selected_options ?? [],
+        not_selected_options: fr?.not_selected_options ?? [],
+        selected_count: fr?.selected_count ?? 0,
+        selection_margin: fr?.selection_margin ?? null,
+      },
+    };
+  }
+
+  return {
+    ...base,
+    results: {
+      framework_type: 'proportional_distribution',
+      resource_name: fr?.resource_name,
+      resource_symbol: fr?.resource_symbol,
+      total_pool: fr?.total_pool,
+      total_allocated: fr?.total_allocated,
+      gini_coefficient: fr?.gini_coefficient,
+      distributions: fr?.distributions ?? [],
+    },
+  };
+}
+
 function formatStandardCSV(results: any, event: any): string {
   const lines: string[] = [];
   const fr = results.results;
@@ -229,12 +332,13 @@ function formatStandardCSV(results: any, event: any): string {
       ...fr.selected_options.map((o: any) => ({ ...o, selected: true })),
       ...fr.not_selected_options.map((o: any) => ({ ...o, selected: false })),
     ];
-    all.sort((a, b) => (b.total_credits ?? 0) - (a.total_credits ?? 0));
-    all.forEach((opt: any, i: number) => {
+    // Order by the engine's rank (quadratic votes desc), not credits.
+    all.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+    all.forEach((opt: any) => {
       lines.push([
-        i + 1,
+        opt.rank ?? '',
         csvCell(opt.title ?? ''),
-        opt.votes ?? 0,
+        (opt.votes ?? 0).toFixed(2),
         opt.total_credits ?? 0,
         `${(opt.percentage ?? 0).toFixed(2)}%`,
         opt.selected ? 'selected' : 'not_selected',

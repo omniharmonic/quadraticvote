@@ -14,9 +14,68 @@ async function resolveProposalEventId(proposalId: string): Promise<string | null
   return data?.event_id ?? null;
 }
 
+/**
+ * Resolve the public.users.id for a Supabase auth user.
+ *
+ * Foreign keys (events.created_by, event_admins.user_id, proposals.approved_by,
+ * …) reference public.users.id, NOT the auth user id. Routes that pass the auth
+ * id straight into those columns silently corrupt ownership/permission checks,
+ * so every authenticated handler should use this resolved id.
+ *
+ * Falls back to the auth id only when no users row exists yet (e.g. the
+ * handle_new_user trigger hasn't fired), preserving prior behaviour.
+ */
+export async function resolveDbUserId(authUserId: string): Promise<string> {
+  const client = createServiceRoleClient();
+  const { data } = await client
+    .from('users')
+    .select('id')
+    .eq('auth_id', authUserId)
+    .single();
+  return data?.id ?? authUserId;
+}
+
 export interface AuthenticatedRequest {
   user: User;
   role: string;
+}
+
+/**
+ * True if the caller may access a PRIVATE event: either an event admin
+ * (JWT in header/cookie) or the holder of a valid invite code (via ?code=
+ * or the X-Invite-Code header). Routes that expose event data — event GET,
+ * results, exports, analytics — must apply this for private events and
+ * return 404 (not 403) so the event's existence isn't leaked to URL probes.
+ */
+export async function callerCanAccessPrivateEvent(
+  request: NextRequest,
+  eventId: string
+): Promise<boolean> {
+  // Admin path — JWT that maps to an event_admins row.
+  const token = extractToken(request);
+  if (token) {
+    const access = await adminService.verifyEventAccess(token, eventId);
+    if (access.isAuthorized) return true;
+  }
+
+  // Invite-code path — query string or header, whichever the client finds
+  // convenient.
+  const code =
+    request.nextUrl.searchParams.get('code') ||
+    request.headers.get('x-invite-code');
+
+  if (code) {
+    const client = createServiceRoleClient();
+    const { data: invite } = await client
+      .from('invites')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('code', code)
+      .maybeSingle();
+    if (invite) return true;
+  }
+
+  return false;
 }
 
 /**
@@ -64,6 +123,7 @@ export function extractToken(request: NextRequest): string | null {
 export async function requireAuth(request: NextRequest): Promise<{
   success: boolean;
   user?: User;
+  userId?: string;
   error?: string
 }> {
   const token = extractToken(request);
@@ -86,7 +146,8 @@ export async function requireAuth(request: NextRequest): Promise<{
     };
   }
 
-  return { success: true, user };
+  const userId = await resolveDbUserId(user.id);
+  return { success: true, user, userId };
 }
 
 /**
@@ -98,6 +159,7 @@ export async function requireEventAdmin(
 ): Promise<{
   success: boolean;
   user?: User;
+  userId?: string;
   role?: string;
   error?: string
 }> {
@@ -122,6 +184,7 @@ export async function requireEventAdmin(
   return {
     success: true,
     user: result.user,
+    userId: result.userId,
     role: result.role
   };
 }
@@ -135,6 +198,7 @@ export async function requireEventOwner(
 ): Promise<{
   success: boolean;
   user?: User;
+  userId?: string;
   error?: string
 }> {
   const authResult = await requireEventAdmin(request, eventId);
@@ -152,7 +216,8 @@ export async function requireEventOwner(
 
   return {
     success: true,
-    user: authResult.user
+    user: authResult.user,
+    userId: authResult.userId
   };
 }
 
@@ -199,7 +264,7 @@ export function createAuthSuccessResponse(
  * Helper to wrap API handlers with authentication
  */
 export function withAuth<T extends Record<string, any>>(
-  handler: (request: NextRequest, context: T, user: User) => Promise<Response>
+  handler: (request: NextRequest, context: T, user: User, userId: string) => Promise<Response>
 ) {
   return async (request: NextRequest, context: T): Promise<Response> => {
     const authResult = await requireAuth(request);
@@ -208,7 +273,7 @@ export function withAuth<T extends Record<string, any>>(
       return createAuthErrorResponse(authResult.error || 'Authentication required');
     }
 
-    return handler(request, context, authResult.user!);
+    return handler(request, context, authResult.user!, authResult.userId!);
   };
 }
 
@@ -216,7 +281,7 @@ export function withAuth<T extends Record<string, any>>(
  * Helper to wrap API handlers with event admin authentication
  */
 export function withEventAdmin<T extends { params: { id: string } }>(
-  handler: (request: NextRequest, context: T, user: User, role: string) => Promise<Response>
+  handler: (request: NextRequest, context: T, user: User, role: string, userId: string) => Promise<Response>
 ) {
   return async (request: NextRequest, context: T): Promise<Response> => {
     const eventId = context.params.id;
@@ -226,7 +291,7 @@ export function withEventAdmin<T extends { params: { id: string } }>(
       return createAuthErrorResponse(authResult.error || 'Admin access required', 403);
     }
 
-    return handler(request, context, authResult.user!, authResult.role!);
+    return handler(request, context, authResult.user!, authResult.role!, authResult.userId!);
   };
 }
 
@@ -235,7 +300,7 @@ export function withEventAdmin<T extends { params: { id: string } }>(
  * and the caller must be an admin of that event.
  */
 export function withProposalAdmin<T extends { params: { id: string } }>(
-  handler: (request: NextRequest, context: T, user: User, role: string) => Promise<Response>
+  handler: (request: NextRequest, context: T, user: User, role: string, userId: string) => Promise<Response>
 ) {
   return async (request: NextRequest, context: T): Promise<Response> => {
     const proposalId = context.params.id;
@@ -247,7 +312,7 @@ export function withProposalAdmin<T extends { params: { id: string } }>(
     if (!authResult.success) {
       return createAuthErrorResponse(authResult.error || 'Admin access required', 403);
     }
-    return handler(request, context, authResult.user!, authResult.role!);
+    return handler(request, context, authResult.user!, authResult.role!, authResult.userId!);
   };
 }
 
@@ -255,7 +320,7 @@ export function withProposalAdmin<T extends { params: { id: string } }>(
  * Helper to wrap API handlers with event owner authentication
  */
 export function withEventOwner<T extends { params: { id: string } }>(
-  handler: (request: NextRequest, context: T, user: User) => Promise<Response>
+  handler: (request: NextRequest, context: T, user: User, userId: string) => Promise<Response>
 ) {
   return async (request: NextRequest, context: T): Promise<Response> => {
     const eventId = context.params.id;
@@ -265,6 +330,6 @@ export function withEventOwner<T extends { params: { id: string } }>(
       return createAuthErrorResponse(authResult.error || 'Owner access required', 403);
     }
 
-    return handler(request, context, authResult.user!);
+    return handler(request, context, authResult.user!, authResult.userId!);
   };
 }

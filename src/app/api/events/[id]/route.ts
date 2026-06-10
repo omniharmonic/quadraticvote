@@ -4,9 +4,8 @@ import { updateEventSchema } from '@/lib/validators/index';
 import {
   withEventAdmin,
   withEventOwner,
-  extractToken,
+  callerCanAccessPrivateEvent,
 } from '@/lib/utils/auth-middleware';
-import { adminService } from '@/lib/services/admin.service';
 import { createServiceRoleClient } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -51,42 +50,6 @@ export async function GET(
       { status: 500 }
     );
   }
-}
-
-/**
- * True if the caller is an event admin OR carries a valid invite code for
- * the event. Used to gate access to private events.
- */
-async function callerCanAccessPrivateEvent(
-  request: NextRequest,
-  eventId: string
-): Promise<boolean> {
-  // Admin path — JWT in header/cookie that maps to an event_admins row.
-  const token = extractToken(request);
-  if (token) {
-    const access = await adminService.verifyEventAccess(token, eventId);
-    if (access.isAuthorized) return true;
-  }
-
-  // Invite-code path — code can come from either the query string or the
-  // X-Invite-Code header. Either format is fine; clients use whichever is
-  // most convenient.
-  const code =
-    request.nextUrl.searchParams.get('code') ||
-    request.headers.get('x-invite-code');
-
-  if (code) {
-    const sb = createServiceRoleClient();
-    const { data: invite } = await sb
-      .from('invites')
-      .select('id')
-      .eq('event_id', eventId)
-      .eq('code', code)
-      .maybeSingle();
-    if (invite) return true;
-  }
-
-  return false;
 }
 
 /**

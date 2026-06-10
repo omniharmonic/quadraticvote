@@ -16,6 +16,7 @@ export const proportionalDistributionConfigSchema = z.object({
   minimum_allocation_enabled: z.boolean().optional(),
   minimum_allocation_percentage: z.number().min(0).max(100).optional(),
   decimal_places: z.number().int().min(0).max(18).optional(),
+  zero_vote_handling: z.enum(['exclude', 'distribute_equally']).optional(),
   payout_token_type: z.enum(['native', 'erc20']).optional(),
   payout_token_address: z.string()
     .regex(/^0x[a-fA-F0-9]{40}$/, 'Must be a 0x-prefixed 20-byte address')
