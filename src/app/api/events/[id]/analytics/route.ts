@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { createServiceRoleClient } from '@/lib/supabase';
 import { adminService } from '@/lib/services/admin.service';
-import { extractToken } from '@/lib/utils/auth-middleware';
+import { extractToken, callerCanAccessPrivateEvent } from '@/lib/utils/auth-middleware';
 import { computeVoterClusters } from '@/lib/utils/voter-clusters';
 
 /**
@@ -34,7 +34,7 @@ export async function GET(
     // Get basic event info using Supabase
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('id, title, start_time, end_time, created_at')
+      .select('id, title, visibility, start_time, end_time, created_at')
       .eq('id', eventId)
       .single();
 
@@ -43,6 +43,18 @@ export async function GET(
         { success: false, error: 'Event not found' },
         { status: 404 }
       );
+    }
+
+    // Private events: aggregate analytics are still event data — only
+    // admins or invite holders may read them (404, don't leak existence).
+    if (!isAdmin && (event as any).visibility === 'private') {
+      const allowed = await callerCanAccessPrivateEvent(request, params.id);
+      if (!allowed) {
+        return NextResponse.json(
+          { success: false, error: 'Event not found' },
+          { status: 404 }
+        );
+      }
     }
 
     // Get real analytics data using Supabase

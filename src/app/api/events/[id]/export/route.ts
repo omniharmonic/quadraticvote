@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase';
 import { resultService } from '@/lib/services/result.service';
-import { requireEventAdmin } from '@/lib/utils/auth-middleware';
+import {
+  requireEventAdmin,
+  callerCanAccessPrivateEvent,
+  extractToken,
+} from '@/lib/utils/auth-middleware';
+import { adminService } from '@/lib/services/admin.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +39,40 @@ export async function GET(
 
     if (eventError || !event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+
+    // Exports must enforce the same gates as the results endpoint — they
+    // are just results in a different format.
+    //
+    // 1. Private events: admins or invite holders only (404, not 403).
+    if (event.visibility === 'private') {
+      const allowed = await callerCanAccessPrivateEvent(request, eventId);
+      if (!allowed) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      }
+    }
+
+    // 2. Results-visibility toggles apply to non-admin callers.
+    let isAdmin = false;
+    const token = extractToken(request);
+    if (token) {
+      const access = await adminService.verifyEventAccess(token, eventId);
+      isAdmin = access.isAuthorized;
+    }
+    if (!isAdmin) {
+      const closed = new Date() > new Date(event.end_time);
+      if (closed && !event.show_results_after_close) {
+        return NextResponse.json(
+          { error: 'Results are not available for this event' },
+          { status: 403 }
+        );
+      }
+      if (!closed && !event.show_results_during_voting) {
+        return NextResponse.json(
+          { error: 'Results will be published when voting closes' },
+          { status: 403 }
+        );
+      }
     }
 
     const results = await resultService.getResults(eventId);

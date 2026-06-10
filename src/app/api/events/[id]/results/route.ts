@@ -5,7 +5,10 @@ export const dynamic = 'force-dynamic';
 
 import { resultService } from '@/lib/services/result.service';
 import { eventService } from '@/lib/services/event.service';
-import { extractToken } from '@/lib/utils/auth-middleware';
+import {
+  extractToken,
+  callerCanAccessPrivateEvent,
+} from '@/lib/utils/auth-middleware';
 import { adminService } from '@/lib/services/admin.service';
 
 /**
@@ -27,6 +30,15 @@ export async function GET(
         { error: 'Event not found' },
         { status: 404 }
       );
+    }
+
+    // Private events: only admins or invite holders may see results at all.
+    // 404 (not 403) so the event's existence isn't leaked.
+    if (event.visibility === 'private') {
+      const allowed = await callerCanAccessPrivateEvent(request, params.id);
+      if (!allowed) {
+        return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      }
     }
 
     // Admin bypass — owners and admins always see results.

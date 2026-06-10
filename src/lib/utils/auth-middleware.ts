@@ -41,6 +41,44 @@ export interface AuthenticatedRequest {
 }
 
 /**
+ * True if the caller may access a PRIVATE event: either an event admin
+ * (JWT in header/cookie) or the holder of a valid invite code (via ?code=
+ * or the X-Invite-Code header). Routes that expose event data — event GET,
+ * results, exports, analytics — must apply this for private events and
+ * return 404 (not 403) so the event's existence isn't leaked to URL probes.
+ */
+export async function callerCanAccessPrivateEvent(
+  request: NextRequest,
+  eventId: string
+): Promise<boolean> {
+  // Admin path — JWT that maps to an event_admins row.
+  const token = extractToken(request);
+  if (token) {
+    const access = await adminService.verifyEventAccess(token, eventId);
+    if (access.isAuthorized) return true;
+  }
+
+  // Invite-code path — query string or header, whichever the client finds
+  // convenient.
+  const code =
+    request.nextUrl.searchParams.get('code') ||
+    request.headers.get('x-invite-code');
+
+  if (code) {
+    const client = createServiceRoleClient();
+    const { data: invite } = await client
+      .from('invites')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('code', code)
+      .maybeSingle();
+    if (invite) return true;
+  }
+
+  return false;
+}
+
+/**
  * Extract Bearer token from Authorization header
  */
 export function extractBearerToken(request: NextRequest): string | null {
