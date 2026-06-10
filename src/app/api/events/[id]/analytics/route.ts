@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { createServiceRoleClient } from '@/lib/supabase';
 import { adminService } from '@/lib/services/admin.service';
 import { extractToken } from '@/lib/utils/auth-middleware';
+import { computeVoterClusters } from '@/lib/utils/voter-clusters';
 
 /**
  * Aggregate stats are public; per-voter records (individual_votes) are
@@ -86,11 +87,31 @@ export async function GET(
       };
     });
 
-    // Generate network graph data
-    const networkData = generateNetworkGraph(allVotes || [], optionPerformance);
+    // Stable, anonymized labels per ballot (Voter 1, Voter 2, …) so nothing
+    // in the analytics payload exposes invite codes — these are returned to
+    // unauthenticated callers too.
+    const voterLabel = new Map<string, string>();
+    (allVotes || []).forEach((v, i) => voterLabel.set(v.invite_code, `Voter ${i + 1}`));
 
-    // Generate cluster analysis
-    const clusterAnalysis = generateClusterAnalysis(allVotes || []);
+    // Generate network graph data (anonymized)
+    const networkData = generateNetworkGraph(allVotes || [], optionPerformance, voterLabel);
+
+    // Generate cluster analysis (anonymized)
+    const clusterAnalysis = generateClusterAnalysis(allVotes || [], voterLabel);
+
+    // 2D voter-similarity scatter for the cluster visualization (PRD §4.3).
+    // Anonymized and admin-only — allocations can fingerprint a voter.
+    const optionIds = (eventOptions || []).map((o) => o.id);
+    const voterClusters = isAdmin
+      ? computeVoterClusters(
+          (allVotes || []).map((v) => ({
+            id: voterLabel.get(v.invite_code)!,
+            allocations: v.allocations as Record<string, number>,
+            totalCredits: v.total_credits_used || 0,
+          })),
+          optionIds
+        )
+      : [];
 
     const analytics = {
       event: event,
@@ -108,12 +129,14 @@ export async function GET(
       // New advanced analytics data
       network_graph: networkData,
       cluster_analysis: clusterAnalysis,
-      // Per-voter records leak voter identity (invite_code, IP hash) and
-      // are only returned to event admins.
+      // 2D voter-similarity coordinates for the cluster scatter (admin-only).
+      voter_clusters: voterClusters,
+      // Per-voter records are admin-only. voter_id is an anonymized label, not
+      // the invite code, so the table can't be used to harvest codes.
       individual_votes: isAdmin
         ? (allVotes || []).map(vote => ({
             id: vote.id,
-            voter_id: vote.invite_code,
+            voter_id: voterLabel.get(vote.invite_code),
             allocations: vote.allocations,
             total_credits: vote.total_credits_used,
             timestamp: vote.submitted_at,
@@ -216,9 +239,12 @@ function calculateTimelineData(votes: any[]) {
 }
 
 // Helper function to generate network graph data
-function generateNetworkGraph(votes: any[], options: any[]) {
+function generateNetworkGraph(votes: any[], options: any[], voterLabel: Map<string, string>) {
   const nodes: any[] = [];
   const edges: any[] = [];
+  // Anonymize node/edge ids: use the stable label, slugified, never the code.
+  const vid = (code: string) =>
+    `voter_${(voterLabel.get(code) || 'voter').replace(/\s+/g, '_').toLowerCase()}`;
 
   const width = 700;
   const height = 500;
@@ -245,9 +271,9 @@ function generateNetworkGraph(votes: any[], options: any[]) {
   votes.forEach((vote, index) => {
     const angle = (index / votes.length) * 2 * Math.PI;
     nodes.push({
-      id: `voter_${vote.invite_code}`,
+      id: vid(vote.invite_code),
       type: 'voter',
-      label: `Voter ${index + 1}`,
+      label: voterLabel.get(vote.invite_code) || `Voter ${index + 1}`,
       credits: vote.total_credits_used,
       timestamp: vote.submitted_at,
       x: centerX + Math.cos(angle) * voterRadius,
@@ -261,8 +287,8 @@ function generateNetworkGraph(votes: any[], options: any[]) {
     Object.entries(allocations).forEach(([optionId, credits]) => {
       if (credits > 0) {
         edges.push({
-          id: `${vote.invite_code}_${optionId}`,
-          source: `voter_${vote.invite_code}`,
+          id: `${vid(vote.invite_code)}_${optionId}`,
+          source: vid(vote.invite_code),
           target: `option_${optionId}`,
           weight: credits,
           label: `${credits} credits`,
@@ -276,7 +302,7 @@ function generateNetworkGraph(votes: any[], options: any[]) {
 }
 
 // Helper function for clustering analysis
-function generateClusterAnalysis(votes: any[]) {
+function generateClusterAnalysis(votes: any[], voterLabel: Map<string, string>) {
   const clusters: any[] = [];
 
   if (votes.length === 0) return { clusters: [], summary: { totalClusters: 0 } };
@@ -308,7 +334,7 @@ function generateClusterAnalysis(votes: any[]) {
       voterCount: voters.length,
       totalCredits: totalCredits,
       avgCredits: avgCredits,
-      voters: voters.map(v => v.invite_code),
+      voters: voters.map(v => voterLabel.get(v.invite_code) || 'Voter'),
       percentage: (voters.length / votes.length) * 100
     });
   });

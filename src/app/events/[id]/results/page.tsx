@@ -18,7 +18,13 @@ import {
 } from '@/components/schematic';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
-import { AllocationPie, SelectionPie } from '@/components/charts';
+import {
+  AllocationPie,
+  SelectionPie,
+  VotesBarChart,
+  AllocationWaterfall,
+  VoterClusterScatter,
+} from '@/components/charts';
 
 export const dynamic = 'force-dynamic';
 
@@ -178,6 +184,29 @@ export default function ResultsPage() {
           <ProportionalReport results={results.results} />
         )}
 
+        {/* Voter coalitions — admin-only data; renders when present */}
+        {analytics?.voter_clusters?.length > 2 && (
+          <SchematicCard className="p-7 md:p-9 mt-10">
+            <div className="flex items-baseline justify-between">
+              <SectionLabel number={2}>Voter coalitions</SectionLabel>
+              <span className="font-mono text-[10.5px] uppercase tracking-widest text-ink-3">
+                admin view
+              </span>
+            </div>
+            <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
+              Who voted alike.
+            </h2>
+            <p className="mt-2 font-serif text-[15px] text-ink-2 leading-snug max-w-2xl">
+              Each dot is a ballot, placed by how its credits were split and
+              colored by coalition. Dots near each other allocated similarly;
+              dot size reflects total credits spent.
+            </p>
+            <div className="mt-5">
+              <VoterClusterScatter points={analytics.voter_clusters} />
+            </div>
+          </SchematicCard>
+        )}
+
         {/* Participation chart */}
         {analytics?.participation_over_time?.length > 0 && (
           <SchematicCard className="p-7 md:p-9 mt-10">
@@ -232,6 +261,23 @@ function BinaryReport({ results }: { results: any }) {
           <h2 className="mt-3 font-display text-2xl text-ink leading-tight">
             These options were selected.
           </h2>
+
+          {all.length > 0 && (
+            <div className="mt-6">
+              <VotesBarChart
+                data={all.map((o: any) => ({
+                  title: o.title,
+                  votes: o.votes,
+                  selected: o.selected,
+                }))}
+                cutoff={
+                  selected.length > 0
+                    ? Math.min(...selected.map((o: any) => o.votes))
+                    : undefined
+                }
+              />
+            </div>
+          )}
 
           <ul className="mt-6 divide-y divide-ink/12">
             {all.map((opt: any, i: number) => (
@@ -359,6 +405,13 @@ function ProportionalReport({ results }: { results: any }) {
               ))}
             </div>
           </div>
+
+          {/* Waterfall — cumulative drawdown of the pool */}
+          {totalAllocated > 0 && (
+            <div className="mt-6">
+              <AllocationWaterfall data={distributions} symbol={results.resource_symbol} />
+            </div>
+          )}
 
           <ul className="mt-6 divide-y divide-ink/12">
             {distributions.map((d: any, i: number) => (
